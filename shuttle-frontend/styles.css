@@ -1,0 +1,52 @@
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background-color: #1a3a5c;
+    color: white;
+    text-align: center;
+    overflow: hidden;
+}
+
+#splash {
+    padding-top: 150px;
+}
+
+h1 {
+    font-size: 36px;
+}
+
+p {
+    font-size: 18px;
+}
+
+button {
+    margin-top: 20px;
+    padding: 10px 25px;
+    font-size: 16px;
+    background-color: white;
+    color: #1a3a5c;
+    border: none;
+    cursor: pointer;
+}
+
+/* the road and the bus */
+#road {
+    margin-top: 60px;
+    height: 60px;
+    border-bottom: 4px dashed white;
+    position: relative;
+}
+
+#bus {
+    font-size: 50px;
+    position: absolute;
+    bottom: 0;
+    left: -80px;
+    animation: drive 4s linear infinite;
+}
+
+@keyframes drive {
+    from { left: -80px; }
+    to { left: 100%; }
+}
