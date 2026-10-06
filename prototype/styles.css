@@ -1,0 +1,81 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+
+* {
+    font-family: "Poppins", sans-serif;
+    box-sizing: border-box;
+}
+
+#timeline {
+    margin: 30px;
+}
+
+body{
+    margin: 0;
+    padding: 0;
+}
+
+.nav-bar{
+    display:flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background-color: #006F71;
+}
+
+.nav-bar h3 {
+    padding: 10px;
+    margin-right: auto;
+    color: white;
+}
+
+.nav-bar li {
+    list-style: none;
+}
+.nav-bar button {
+    padding: 10px;
+    font-size: 20px;
+    border-radius: 20px;
+}
+
+.btn {
+    background-color: #006F71;
+    color: white;
+    cursor: pointer;
+    padding: 10px;
+    width: 100%;
+    text-align: left;
+    font-size: 20px;
+    border: none;
+    outline: none;
+}
+
+.content {
+    background-color: #E9EBEC;
+    padding: 15px;
+    display: none;
+    overflow:hidden;
+}
+
+.btn:after {
+    content: "+";
+    font-size: 20px;
+    transform: rotate(-90deg);
+    color: white;
+    float: right;
+    transition: transform 100ms ease-in-out;
+}
+
+.active::after{
+    color: black;
+    transform: rotate(-45deg);
+}
+
+.active, .btn:hover, .btn:hover::after{
+    background-color: #5FA3A4;
+    color: black;
+}
+
+.images {
+    display: flex;
+}
+
