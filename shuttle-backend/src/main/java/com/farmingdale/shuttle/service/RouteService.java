@@ -9,12 +9,15 @@ import java.util.List;
 @Service
 public class RouteService {
 
+    // Repository used to access route data
     private final RouteRepository routeRepository;
 
+    // Injects the repository into the service
     public RouteService(RouteRepository routeRepository) {
         this.routeRepository = routeRepository;
     }
 
+    // Retrieves all routes from the database
     public List<Route> getAllRoutes() {
         return routeRepository.findAll();
     }

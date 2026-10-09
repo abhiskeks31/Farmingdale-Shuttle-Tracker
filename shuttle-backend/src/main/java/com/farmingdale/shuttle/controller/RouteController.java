@@ -12,12 +12,15 @@ import java.util.List;
 @RequestMapping("/api/routes")
 public class RouteController {
 
+    // Service used to handle route requests
     private final RouteService routeService;
 
+    // Injects the service into the controller
     public RouteController(RouteService routeService) {
         this.routeService = routeService;
     }
 
+    // GET /api/routes - Returns all route records
     @GetMapping
     public List<Route> getAllRoutes() {
         return routeService.getAllRoutes();
