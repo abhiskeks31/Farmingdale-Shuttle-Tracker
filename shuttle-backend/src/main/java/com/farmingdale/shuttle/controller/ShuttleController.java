@@ -2,9 +2,7 @@ package com.farmingdale.shuttle.controller;
 
 import com.farmingdale.shuttle.entity.Shuttle;
 import com.farmingdale.shuttle.service.ShuttleService;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -12,12 +10,15 @@ import java.util.List;
 @RequestMapping("/api/shuttles")
 public class ShuttleController {
 
+    // Service used to handle shuttle requests
     private final ShuttleService shuttleService;
 
+    // Injects the service into the controller
     public ShuttleController(ShuttleService shuttleService) {
         this.shuttleService = shuttleService;
     }
 
+    // GET /api/shuttles - Returns all shuttle records
     @GetMapping
     public List<Shuttle> getAllShuttles() {
         return shuttleService.getAllShuttles();
