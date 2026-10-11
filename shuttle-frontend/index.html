@@ -1,14 +1,100 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Farmingdale Shuttle Tracker</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css"/>
-
-
+    <link rel="stylesheet" href="navbar.css"/>
 </head>
 <body>
+
+<!-- NAVBAR: hamburger on the left, your brand text on the right -->
+<header class="nav-header">
+    <button class="nav-toggle" id="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="nav-menu">
+        <svg class="icon-open" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        <svg class="icon-close" viewBox="0 0 24 24"><path d="M5 5l14 14M19 5L5 19"/></svg>
+    </button>
+
+    <div id="brand">Farmingdale Shuttle Tracker<small>Farmingdale State College</small></div>
+</header>
+
+<!-- Vertical menu that opens under the hamburger -->
+<nav class="nav-menu" id="nav-menu" aria-label="Main menu">
+    <button class="nav-item" data-view="view-routes">View Routes</button>
+    <button class="nav-item" data-view="search-routes">Search Routes</button>
+    <button class="nav-item" data-view="alert">Alert</button>
+    <button class="nav-item" data-view="feedback">Feedback</button>
+    <button class="nav-item" data-view="admin">Admin Tools</button>
+</nav>
+
+<!-- PANEL: opens to the right of the menu when a menu button is clicked.-->
+
+<section class="panel" id="panel" aria-live="polite">
+
+    <!-- View Routes -->
+    <div class="view" id="view-routes">
+        <h2>Select Routes</h2>
+        <div id="route-toggles"></div>
+        <p class="hint">Routes you turn on will show on the map.</p>
+    </div>
+
+    <!-- Search Routes -->
+    <div class="view" id="search-routes">
+        <h2>Search Routes</h2>
+        <div id="search-form">
+            <select id="search-from" aria-label="From"></select>
+            <select id="search-to" aria-label="To"></select>
+            <div id="search-results"><div class="empty">Search results will appear here</div></div>
+        </div>
+        <div id="search-detail" hidden></div>
+    </div>
+
+    <!--Alert-->
+    <div class="view" id="alert" >Alert</div>
+
+    <!-- Feedback -->
+    <div class="view" id="feedback">
+        <h2>Feedback</h2>
+        <form id="feedback-form">
+            <label for="feedback-text" class="hint">Tell us what to improve.</label>
+            <textarea id="feedback-text" required></textarea>
+            <button class="panel-btn" type="submit">Send feedback</button>
+            <p class="note" id="feedback-msg" role="status"></p>
+        </form>
+    </div>
+
+    <!-- Admin Tools -->
+    <div class="view" id="admin">
+        <h2>Admin Tools</h2>
+
+        <form id="admin-login">
+            <p class="hint">Sign in to post alerts.</p>
+            <label for="admin-user" class="hint">Username</label>
+            <input id="admin-user" type="text" autocomplete="username" required>
+            <label for="admin-pass" class="hint">Password</label>
+            <input id="admin-pass" type="password" autocomplete="current-password" required>
+            <button class="panel-btn" type="submit">Sign in</button>
+            <p class="note" id="login-msg" role="status"></p>
+        </form>
+
+        <div id="admin-tools" hidden>
+            <form id="alert-form">
+                <label for="alert-text" class="hint">Message riders will see</label>
+                <textarea id="alert-text" maxlength="200" required></textarea>
+                <button class="panel-btn" type="submit">Post alert</button>
+            </form>
+
+            <h3>Active alerts</h3>
+            <div id="admin-alerts"></div>
+
+            <button class="panel-btn panel-btn-light" id="admin-signout" type="button">Sign out</button>
+            <p class="note" id="admin-msg" role="status"></p>
+        </div>
+    </div>
+</section>
+
 
 <div id="splash">
     <h1>Farmingdale Shuttle Tracker</h1>
@@ -20,7 +106,7 @@
     </div>
 </div>
 
+<script src="script.js"></script>
 
 </body>
-<script src="script.js"></script>
 </html>
