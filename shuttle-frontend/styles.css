@@ -1,4 +1,8 @@
+/* styles.css
+   Colors shared by the whole app, and the splash screen.
+   Load this FIRST in index.html. navbar.css uses the colors below. */
 
+/* ---------- Colors ---------- */
 
 :root {
     --teal: #006F71;
