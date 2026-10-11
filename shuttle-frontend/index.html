@@ -24,10 +24,12 @@
 <nav class="nav-menu" id="nav-menu" aria-label="Main menu">
     <button class="nav-item" data-view="view-routes">View Routes</button>
     <button class="nav-item" data-view="search-routes">Search Routes</button>
+    <button class="nav-item" data-view="alert">Alert</button>
     <button class="nav-item" data-view="feedback">Feedback</button>
     <button class="nav-item" data-view="admin">Admin Tools</button>
 </nav>
 
+<!-- PANEL: opens to the right of the menu when a menu button is clicked.-->
 
 <section class="panel" id="panel" aria-live="polite">
 
@@ -48,6 +50,9 @@
         </div>
         <div id="search-detail" hidden></div>
     </div>
+
+    <!--Alert-->
+    <div class="view" id="alert" >Alert</div>
 
     <!-- Feedback -->
     <div class="view" id="feedback">
@@ -100,7 +105,6 @@
         <div id="bus">🚌</div>
     </div>
 </div>
-
 
 <script src="script.js"></script>
 

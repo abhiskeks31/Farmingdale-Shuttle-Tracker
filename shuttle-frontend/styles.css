@@ -1,4 +1,3 @@
-
 :root {
     --teal: #006F71;
     --teal-light: #5FA3A4;
@@ -60,10 +59,15 @@ body {
     position: absolute;
     bottom: 0;
     left: -80px;
-    animation: drive 4s linear infinite;
+    animation: drive 5s linear infinite;
 }
 
 @keyframes drive {
     from { left: -80px; }
     to { left: 100%; }
 }
+
+
+
+
+
