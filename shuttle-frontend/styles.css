@@ -1,31 +1,8 @@
-/* styles.css
-   Colors shared by the whole app, and the splash screen.
-   Load this FIRST in index.html. navbar.css uses the colors below. */
-
-/* ---------- Colors ---------- */
-
-:root {
-    --teal: #006F71;
-    --teal-light: #5FA3A4;
-    --gray-light: #E9EBEC;
-    --gray-dark: #676767;
-    --purple: #7B40BA;
-    --ink: #1d1d1d;
-    --focus: #ffbf47;
-}
-
-:focus-visible {
-    outline: 3px solid var(--focus);
-    outline-offset: 2px;
-}
-
-
-/* ---------- Splash screen ---------- */
 
 body {
     margin: 0;
     font-family: Arial, sans-serif;
-    background-color: var(--teal);
+    background-color: #1a3a5c;
     color: white;
     text-align: center;
     overflow: hidden;
@@ -35,15 +12,15 @@ body {
     padding-top: 150px;
 }
 
-#splash h1 {
+h1 {
     font-size: 36px;
 }
 
-#splash p {
+p {
     font-size: 18px;
 }
 
-#splash button {
+button {
     margin-top: 20px;
     padding: 10px 25px;
     font-size: 16px;
@@ -53,6 +30,7 @@ body {
     cursor: pointer;
 }
 
+/* the road and the bus */
 #road {
     margin-top: 60px;
     height: 60px;
