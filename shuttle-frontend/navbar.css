@@ -1,8 +1,4 @@
-/* navbar.css
-   The top bar, the side menu, and the panels that open next to it.
-   Load this AFTER styles.css, because it uses the colors defined there. */
 
-/* ---------- Sizes and font ---------- */
 
 :root {
     --font: 'Poppins', sans-serif;
@@ -142,7 +138,6 @@
 }
 
 
-/* ---------- Panel (opens to the right of the menu) ---------- */
 
 .panel {
     position: fixed;
@@ -300,7 +295,7 @@
     height: 24px;
 }
 
-/* the real checkbox sits invisibly on top, so clicks and the keyboard still work */
+
 .toggle input {
     position: absolute;
     top: 0;
@@ -495,7 +490,7 @@
         width: calc(100vw - var(--menu-w));
     }
 
-    /* not enough room for two columns, so type and time get their own rows */
+
     .result .type,
     .result .time {
         grid-column: 1 / -1;
