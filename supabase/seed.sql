@@ -10,3 +10,7 @@ VALUES
     (2, 'nold-lirr', 'active'),
     (3, 'lirr-aviation', 'active'),
     (4, 'aviation-lirr', 'active');
+
+INSERT INTO route (route_id, route_name, status)
+VALUES
+    (1, 'farmingdale_shuttle', 'active');
