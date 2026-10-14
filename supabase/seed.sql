@@ -14,3 +14,11 @@ VALUES
 INSERT INTO route (route_id, route_name, status)
 VALUES
     (1, 'farmingdale_shuttle', 'active');
+
+
+
+INSERT INTO "driver" (driver_id, driver_name)
+VALUES 
+  (1, 'Tony Stark'),
+  (2, 'Peter Parker'),
+  (3, 'Steve Rogers');
