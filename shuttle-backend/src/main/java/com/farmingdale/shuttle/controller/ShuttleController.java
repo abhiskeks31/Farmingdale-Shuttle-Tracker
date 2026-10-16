@@ -1,5 +1,6 @@
 package com.farmingdale.shuttle.controller;
 
+import com.farmingdale.shuttle.dto.AvailableSeatsResponse;
 import com.farmingdale.shuttle.entity.Shuttle;
 import com.farmingdale.shuttle.service.ShuttleService;
 import org.springframework.web.bind.annotation.*;
@@ -22,5 +23,17 @@ public class ShuttleController {
     @GetMapping
     public List<Shuttle> getAllShuttles() {
         return shuttleService.getAllShuttles();
+    }
+
+    /**
+     * GET /api/shuttles/{shuttleId}/available-seats
+     *
+     * Returns the available seat count for a specific shuttle.
+     */
+    @GetMapping("/{shuttleId}/available-seats")
+    public AvailableSeatsResponse getAvailableSeats(
+            @PathVariable Long shuttleId) {
+
+        return shuttleService.getAvailableSeats(shuttleId);
     }
 }
