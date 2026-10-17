@@ -1,7 +1,10 @@
 package com.farmingdale.shuttle.controller;
 
+import com.farmingdale.shuttle.dto.GPSLocationUpdateRequest;
 import com.farmingdale.shuttle.entity.GPSLocation;
 import com.farmingdale.shuttle.service.GPSLocationService;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,9 +31,25 @@ public class GPSLocationController {
     // GET /api/gps-locations/shuttle/{shuttleId}/latest
     // Returns the most recent location for a shuttle
     @GetMapping("/shuttle/{shuttleId}/latest")
-    public ResponseEntity<GPSLocation> getLatestLocation(@PathVariable Long shuttleId) {
+    public ResponseEntity<GPSLocation> getLatestLocation(
+            @PathVariable Long shuttleId) {
+
         return gpsLocationService.getLatestLocation(shuttleId)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    /**
+     * POST /api/gps-locations/shuttle/{shuttleId}
+     *
+     * Records a new GPS location for a shuttle.
+     */
+    @PostMapping("/shuttle/{shuttleId}")
+    @ResponseStatus(HttpStatus.CREATED)
+    public GPSLocation updateLocation(
+            @PathVariable Long shuttleId,
+            @Valid @RequestBody GPSLocationUpdateRequest request) {
+
+        return gpsLocationService.updateLocation(shuttleId, request);
     }
 }
