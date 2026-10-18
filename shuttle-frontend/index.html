@@ -5,12 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Farmingdale Shuttle Tracker</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css"/>
+    <<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
     <link rel="stylesheet" href="navbar.css"/>
+    <link rel="stylesheet" href="styles.css"/>
 </head>
 <body>
 
-<!-- NAVBAR: hamburger on the left, your brand text on the right -->
+<!-- NAVBAR: hamburger on the left -->
 <header class="nav-header">
     <button class="nav-toggle" id="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="nav-menu">
         <svg class="icon-open" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
@@ -95,7 +96,7 @@
     </div>
 </section>
 
-
+<div id="map"></div>
 <div id="splash">
     <h1>Farmingdale Shuttle Tracker</h1>
     <p>Track the campus shuttle in real time</p>
@@ -106,6 +107,8 @@
     </div>
 </div>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="map.js"></script>
 <script src="script.js"></script>
 
 </body>

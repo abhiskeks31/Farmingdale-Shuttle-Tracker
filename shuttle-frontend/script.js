@@ -1,12 +1,13 @@
-// Get Started button: hide the splash screen
+// Get Started hides the splash screen and shows the map
 function goToApp() {
     document.getElementById('splash').style.display = 'none';
+    startMap();
 }
 
 const $ = id => document.getElementById(id);
 
 
-// ---- sample data (replace with real data from the backend later) ----
+// ---- sample data, to be replaced with the real data from the backend ----
 
 const STOPS = ['Farmingdale LIRR', 'Nold Hall', 'Aviation Center'];
 
@@ -26,8 +27,7 @@ const SCHEDULE = [
 ];
 
 
-
-// makes text safe to put inside HTML
+// stops alert text from being read as HTML
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
@@ -65,7 +65,7 @@ document.addEventListener('keydown', e => {
     if (e.key === 'Escape') setMenu(false);
 });
 
-// a menu button highlights itself and shows its own panel
+// clicking a menu button highlights it and opens its panel
 menuItems.forEach(item => {
     item.addEventListener('click', () => {
         menuItems.forEach(other => other.setAttribute('aria-pressed', other === item));
@@ -107,7 +107,7 @@ function fillStops(select, label) {
 fillStops(fromSelect, 'From');
 fillStops(toSelect, 'To');
 
-// filled and empty circles, like ●●○○
+// crowd level as dots, like ●●○○
 function crowdHtml(level) {
     const dots = '●'.repeat(level) + '○'.repeat(4 - level);
     return `<span class="crowd" role="img" aria-label="Crowd level ${level} of 4">${dots}</span>`;
@@ -136,7 +136,7 @@ function showResults() {
 fromSelect.addEventListener('change', showResults);
 toSelect.addEventListener('change', showResults);
 
-// More Info: swap the results for the stop list of that trip
+// More Info shows the stops for that trip instead of the results
 resultsBox.addEventListener('click', e => {
     const button = e.target.closest('button[data-trip]');
     if (!button) return;
@@ -170,7 +170,7 @@ resultsBox.addEventListener('click', e => {
 
 $('feedback-form').addEventListener('submit', e => {
     e.preventDefault();
-    // TODO: send the feedback text to the backend
+    // TODO: send the feedback to the backend
     $('feedback-msg').textContent = 'Thanks. Your feedback was sent.';
     $('feedback-text').value = '';
 });
@@ -178,14 +178,12 @@ $('feedback-form').addEventListener('submit', e => {
 
 // ---- Alerts and Admin Tools ----
 
-// For now alerts are saved in this browser only, so the demo works.
-// TODO: load and save alerts through the backend so every rider sees them.
+// TODO: use the backend for alerts. For now they are saved in this browser only.
 let alerts = [];
 try {
-    const saved = JSON.parse(localStorage.getItem('fst-alerts'));
-    if (Array.isArray(saved)) alerts = saved;
+    alerts = JSON.parse(localStorage.getItem('fst-alerts')) || [];
 } catch (err) {
-    // storage is blocked, start with no alerts
+    // storage is blocked, so start with no alerts
 }
 
 function saveAlerts() {
@@ -196,7 +194,7 @@ function saveAlerts() {
     }
 }
 
-// draws the alert list in the Alert panel (riders) and in Admin Tools
+// fills the alert list in the Alert panel (riders) and in Admin Tools
 function drawAlerts() {
     let adminHtml = '';
     let riderHtml = '';
@@ -213,10 +211,8 @@ function drawAlerts() {
 
 $('admin-login').addEventListener('submit', e => {
     e.preventDefault();
-    // TODO: check the username and password with the backend.
-    // For now any username and password works, so this does NOT protect anything.
+    // TODO: check the login with the backend. Right now any username and password works.
     $('admin-pass').value = '';
-    $('admin-msg').textContent = '';
     $('admin-login').hidden = true;
     $('admin-tools').hidden = false;
     $('alert-text').focus();
