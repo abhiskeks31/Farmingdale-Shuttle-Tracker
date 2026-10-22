@@ -6,6 +6,8 @@ import com.farmingdale.shuttle.service.TripService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.farmingdale.shuttle.dto.TripStopResponse;
+
 import java.util.List;
 
 @RestController
@@ -42,5 +44,20 @@ public class TripController {
             @PathVariable Long routeId) {
 
         return tripService.getTripsByRoute(routeId);
+    }
+
+    // GET /api/trips/{tripId}/stops - Retrieves ordered stops for a trip
+    @GetMapping("/{tripId}/stops")
+    public ResponseEntity<List<TripStopResponse>> getTripStops(
+            @PathVariable Long tripId) {
+
+        // Return 404 if the trip does not exist
+        if (tripService.getTripById(tripId).isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        List<TripStopResponse> stops = tripService.getStopsForTrip(tripId);
+
+        return ResponseEntity.ok(stops);
     }
 }
