@@ -10,4 +10,7 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Long> {
 
     // Retrieves schedules for a route ordered by departure time
     List<Schedule> findByRouteIdOrderByDepartureTimeAsc(Long routeId);
+
+    // Retrieves the ordered stops associated with a trip
+    List<Schedule> findByTripIdOrderByStopOrderAsc(Long tripId);
 }

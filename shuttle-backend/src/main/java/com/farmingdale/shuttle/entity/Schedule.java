@@ -30,6 +30,14 @@ public class Schedule {
     @Column(name = "day_of_week", nullable = false)
     private String dayOfWeek;
 
+    // Trip associated with this scheduled stop
+    @Column(name = "trip_id")
+    private Long tripId;
+
+    // Order of the stop within the trip
+    @Column(name = "stop_order")
+    private Long stopOrder;
+
     // Required constructor for JPA
     public Schedule() {
     }
@@ -75,4 +83,21 @@ public class Schedule {
     public void setDayOfWeek(String dayOfWeek) {
         this.dayOfWeek = dayOfWeek;
     }
+
+    public Long getTripId() {
+        return tripId;
+    }
+
+    public void setTripId(Long tripId) {
+        this.tripId = tripId;
+    }
+
+    public Long getStopOrder() {
+        return stopOrder;
+    }
+
+    public void setStopOrder(Long stopOrder) {
+        this.stopOrder = stopOrder;
+    }
+
 }
