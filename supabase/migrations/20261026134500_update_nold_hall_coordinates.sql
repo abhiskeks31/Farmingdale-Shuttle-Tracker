@@ -1,0 +1,1 @@
+UPDATE stop SET latitude = 40.749538, longitude = -73.4313365 WHERE stop_name = 'nold_hall';
