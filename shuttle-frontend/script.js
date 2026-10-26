@@ -7,27 +7,31 @@ function goToApp() {
 const $ = id => document.getElementById(id);
 
 
-// ---- sample data, to be replaced with the real data from the backend ----
+// ---- talking to the backend ----
 
-const STOPS = ['Farmingdale LIRR', 'Nold Hall', 'Aviation Center'];
+const API = 'http://localhost:8080/api';
 
-const ROUTES = [
-    { name: 'Farmingdale LIRR', color: '#7B40BA' },
-    { name: 'Nold Hall', color: '#4081BA' },
-    { name: 'Aviation Center', color: '#BA8140' }
-];
+// gets JSON from the backend, or null if it was not found (404)
+async function getJson(path) {
+    const response = await fetch(API + path);
+    if (response.status === 404) return null;
+    if (!response.ok) throw new Error('Request failed: ' + response.status);
+    return response.json();
+}
 
-const SCHEDULE = [
-    { type: 'Off Peak', crowd: 1, time: '12:00 - 12:30 PM', eta: '10 mins', seats: 10,
-        stops: [['Stop 1', '12:00 PM', 'On Time'], ['Stop 2', '12:30 PM', 'Delayed']] },
-    { type: 'Peak', crowd: 3, time: '12:30 - 1:00 PM', eta: '40 mins', seats: 4,
-        stops: [['Stop 1', '12:30 PM', 'On Time'], ['Stop 2', '1:00 PM', 'On Time']] },
-    { type: 'Off Peak', crowd: 2, time: '1:00 - 1:30 PM', eta: '70 mins', seats: 7,
-        stops: [['Stop 1', '1:00 PM', 'On Time'], ['Stop 2', '1:30 PM', 'On Time']] }
-];
+const ROUTE_COLORS = ['#7B40BA', '#4081BA', '#BA8140', '#2E9E6B', '#C0392B'];
 
 
-// stops alert text from being read as HTML
+
+
+// "farmingdale_lirr" -> "Farmingdale LIRR"
+function prettyStopName(name) {
+    return String(name || '').split('_').filter(Boolean).map(word =>
+        word.toLowerCase() === 'lirr' ? 'LIRR' : word.charAt(0).toUpperCase() + word.slice(1)
+    ).join(' ');
+}
+
+// stops text from being read as HTML
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
@@ -36,6 +40,34 @@ function escapeHtml(text) {
 
 function formatTime(ms) {
     return new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+
+// "07:55:00" -> "7:55 AM"
+function formatClock(hhmmss) {
+    const [hour, minute] = hhmmss.split(':').map(Number);
+    const date = new Date();
+    date.setHours(hour, minute, 0, 0);
+    return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+
+// the time right now like "07:55", so it can be compared with the schedule
+function nowAsClock() {
+    const now = new Date();
+    return String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+}
+
+const WEEK = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+// does "Mon-Fri" or "Mon-Thu" include today?
+// TODO: remove this when the backend filters by day.
+function runsToday(serviceDays) {
+    const today = (new Date().getDay() + 6) % 7;   // Monday is 0
+    return String(serviceDays).split(',').some(part => {
+        const [start, end] = part.trim().split('-').map(day => WEEK.indexOf(day.trim().slice(0, 3)));
+        if (start === -1) return false;
+        if (end === undefined || end === -1) return today === start;   // just one day
+        return today >= start && today <= end;
+    });
 }
 
 
@@ -79,17 +111,47 @@ menuItems.forEach(item => {
 
 // ---- View Routes: one switch for each route ----
 
-ROUTES.forEach((route, i) => {
-    const row = document.createElement('div');
-    row.className = 'route-row';
-    row.innerHTML = `
-        <span class="toggle">
-            <input type="checkbox" id="route-${i}" aria-label="Show ${route.name} route">
-            <span class="track"></span><span class="knob"></span>
-        </span>
-        <label for="route-${i}"><span class="dot" style="background:${route.color}"></span>${route.name}</label>`;
-    $('route-toggles').appendChild(row);
-});
+async function loadRouteToggles() {
+    const box = $('route-toggles');
+
+    let routes;
+    try {
+        routes = await getJson('/routes');
+    } catch (err) {
+        box.innerHTML = '<div class="empty">Could not load routes. Is the backend running?</div>';
+        return;
+    }
+    if (!routes || routes.length === 0) {
+        box.innerHTML = '<div class="empty">No routes available.</div>';
+        return;
+    }
+
+    box.innerHTML = '';
+    routes.forEach((route, i) => {
+        const color = ROUTE_COLORS[i % ROUTE_COLORS.length];
+        const name = escapeHtml(prettyStopName(route.routeName));
+
+        const row = document.createElement('div');
+        row.className = 'route-row';
+        row.innerHTML = `
+            <span class="toggle">
+                <input type="checkbox" id="route-${i}" aria-label="Show ${name} route">
+                <span class="track"></span><span class="knob"></span>
+            </span>
+            <label for="route-${i}"><span class="dot" style="background:${color}"></span>${name}</label>`;
+        box.appendChild(row);
+
+        // a switch draws or hides its route on the map (the code is in map.js)
+        const checkbox = row.querySelector('input');
+        checkbox.addEventListener('change', async () => {
+            const drawn = await setRouteVisible(route, color, checkbox.checked);
+            if (!drawn) checkbox.checked = false;
+            $('route-msg').textContent = drawn ? '' : 'Could not draw this route.';
+        });
+    });
+}
+
+loadRouteToggles();
 
 
 // ---- Search Routes ----
@@ -100,50 +162,115 @@ const resultsBox = $('search-results');
 const searchForm = $('search-form');
 const detailBox = $('search-detail');
 
-function fillStops(select, label) {
-    const options = STOPS.map(stop => `<option>${stop}</option>`).join('');
+let currentResults = [];   // the trips on screen: { trip, stops, from, to }
+let searchCount = 0;       // so an old, slow search can't replace a newer one
+const tripStops = {};      // tripId -> its stops, so each trip is only asked for once
+
+function fillStops(select, label, stops) {
+    const options = stops.map(stop =>
+        `<option value="${stop.stopId}">${escapeHtml(prettyStopName(stop.stopName))}</option>`).join('');
     select.innerHTML = `<option value="">${label}</option>${options}`;
 }
-fillStops(fromSelect, 'From');
-fillStops(toSelect, 'To');
 
-// crowd level as dots, like ●●○○
-function crowdHtml(level) {
-    const dots = '●'.repeat(level) + '○'.repeat(4 - level);
-    return `<span class="crowd" role="img" aria-label="Crowd level ${level} of 4">${dots}</span>`;
+async function loadStops() {
+    try {
+        const stops = await getJson('/stops');
+        if (!stops) throw new Error('No stops');
+        fillStops(fromSelect, 'From', stops);
+        fillStops(toSelect, 'To', stops);
+    } catch (err) {
+        resultsBox.innerHTML = '<div class="empty">Could not load stops. Is the backend running?</div>';
+    }
 }
 
-function showResults() {
+async function getTripStops(tripId) {
+    if (!tripStops[tripId]) {
+        tripStops[tripId] = (await getJson(`/trips/${tripId}/stops`)) || [];
+    }
+    return tripStops[tripId];
+}
+
+// Today's trips that go from one stop to another, earliest first.
+// TODO: when the backend adds GET /trips/search?fromStopId=&toStopId=,
+// replace this with one call to it.
+async function findTrips(fromId, toId) {
+    const trips = (await getJson('/trips')) || [];
+    const todays = trips.filter(trip => runsToday(trip.serviceDays));
+
+    const checked = await Promise.all(todays.map(async trip => {
+        const stops = await getTripStops(trip.tripId);
+        const from = stops.find(stop => String(stop.stopId) === String(fromId));
+        const to = stops.find(stop => String(stop.stopId) === String(toId));
+        return { trip, stops, from, to };
+    }));
+
+    const now = nowAsClock();
+    return checked
+        .filter(r => r.from && r.to && r.from.stopOrder < r.to.stopOrder)
+        .filter(r => r.from.departureTime.slice(0, 5) >= now)   // not left yet
+        .sort((a, b) => a.from.departureTime.localeCompare(b.from.departureTime));
+}
+
+async function showResults() {
+    const thisSearch = ++searchCount;
+    currentResults = [];
+
     if (!fromSelect.value || !toSelect.value) {
         resultsBox.innerHTML = '<div class="empty">Search results will appear here</div>';
-    } else if (fromSelect.value === toSelect.value) {
-        resultsBox.innerHTML = '<div class="empty">Pick two different stops.</div>';
-    } else {
-        let html = '<p class="hint">Select More Info to see stop details.</p>';
-        SCHEDULE.forEach((trip, i) => {
-            html += `
-                <div class="result">
-                    <span class="type ${trip.type === 'Peak' ? 'peak' : ''}">${trip.type}${crowdHtml(trip.crowd)}</span>
-                    <span class="time">${trip.time}</span>
-                    <button class="panel-link" type="button" data-trip="${i}">More Info &#9656;</button>
-                    <span class="eta">${trip.eta}</span>
-                </div>`;
-        });
-        resultsBox.innerHTML = html;
+        return;
     }
+    if (fromSelect.value === toSelect.value) {
+        resultsBox.innerHTML = '<div class="empty">Pick two different stops.</div>';
+        return;
+    }
+
+    resultsBox.innerHTML = '<div class="empty">Searching...</div>';
+
+    let results;
+    try {
+        results = await findTrips(fromSelect.value, toSelect.value);
+    } catch (err) {
+        if (thisSearch !== searchCount) return;
+        resultsBox.innerHTML = '<div class="empty">Could not load trips. Please try again.</div>';
+        return;
+    }
+    if (thisSearch !== searchCount) return;   // a newer search already started
+
+    currentResults = results;
+
+    if (results.length === 0) {
+        resultsBox.innerHTML = '<div class="empty">No more trips today between these stops.</div>';
+        return;
+    }
+
+    let html = '<p class="hint">Select More Info to see stop details.</p>';
+    results.forEach((r, i) => {
+        const destination = r.trip.finalDestination ? `To ${escapeHtml(r.trip.finalDestination)}` : 'Shuttle';
+        html += `
+            <div class="result">
+                <span class="type">${destination}</span>
+                <span class="time">${formatClock(r.from.departureTime)} &rarr; ${formatClock(r.to.departureTime)}</span>
+                <button class="panel-link" type="button" data-trip="${i}">More Info &#9656;</button>
+            </div>`;
+    });
+    resultsBox.innerHTML = html;
 }
 
 fromSelect.addEventListener('change', showResults);
 toSelect.addEventListener('change', showResults);
 
-// More Info shows the stops for that trip instead of the results
+// More Info shows the stops of that trip instead of the results
 resultsBox.addEventListener('click', e => {
     const button = e.target.closest('button[data-trip]');
     if (!button) return;
 
-    const trip = SCHEDULE[button.dataset.trip];
-    const rows = trip.stops.map(([name, time, status]) => `
-        <tr><td>${name}</td><td>${time}</td><td class="${status === 'On Time' ? 'on-time' : ''}">${status}</td></tr>`).join('');
+    const result = currentResults[button.dataset.trip];
+    // TODO: when live tracking is connected, show On Time / Delayed instead of "Scheduled"
+    const rows = [...result.stops]
+        .sort((a, b) => a.stopOrder - b.stopOrder)
+        .map(stop => `
+            <tr><td>${escapeHtml(prettyStopName(stop.stopName))}</td><td>${formatClock(stop.departureTime)}</td><td>Scheduled</td></tr>`)
+        .join('');
 
     detailBox.innerHTML = `
         <div class="detail">
@@ -152,7 +279,6 @@ resultsBox.addEventListener('click', e => {
                 <thead><tr><th>Stops</th><th>Time</th><th>Status</th></tr></thead>
                 <tbody>${rows}</tbody>
             </table>
-            <div class="seats">Available Seats: <strong>${trip.seats}</strong></div>
         </div>`;
 
     $('detail-back').addEventListener('click', () => {
@@ -164,6 +290,8 @@ resultsBox.addEventListener('click', e => {
     searchForm.hidden = true;
     $('detail-back').focus();
 });
+
+loadStops();
 
 
 // ---- Feedback ----
