@@ -28,20 +28,12 @@ const stopIcon = L.divIcon({
     tooltipAnchor: [12, -12]
 });
 
-// how full the shuttle is
-function crowding(passengers, capacity) {
-    const ratio = capacity > 0 ? passengers / capacity : 0;
-    if (ratio >= 1) return { label: 'Full', color: '#c0392b' };
-    if (ratio >= 0.75) return { label: 'Almost full', color: '#e67e22' };
-    if (ratio >= 0.4) return { label: 'Filling up', color: '#f1c40f' };
-    return { label: 'Plenty of seats', color: '#27ae60' };
-}
+
 
 function shuttlePopup(shuttle, spot) {
     const capacity = Number(shuttle.capacity) || 0;
     const passengers = Number(shuttle.currentPassengers) || 0;
     const seats = Math.max(capacity - passengers, 0);
-    const level = crowding(passengers, capacity);
     const percent = capacity > 0 ? Math.min(100, Math.round(passengers / capacity * 100)) : 0;
     const time = spot.recordedAt
         ? new Date(spot.recordedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' })
@@ -50,10 +42,9 @@ function shuttlePopup(shuttle, spot) {
     return `
         <strong>${escapeHtml(shuttle.vehicleNumber)}</strong><br>
         Status: ${escapeHtml(shuttle.status)}<br>
-        <span style="color:${level.color};font-weight:600;">${level.label}</span>
-        &mdash; ${passengers} of ${capacity} aboard (${seats} seats open)
+        ${passengers} of ${capacity} aboard (${seats} seats open)
         <div style="background:#e5e5e5;border-radius:4px;height:6px;margin:4px 0 6px;">
-            <div style="background:${level.color};width:${percent}%;height:6px;border-radius:4px;"></div>
+            <div style="background:#006F71;width:${percent}%;height:6px;border-radius:4px;"></div>
         </div>
         Last update: ${time}`;
 }
@@ -117,7 +108,6 @@ async function refreshShuttles() {
     }
 }
 
-
 // ---- stop markers ----
 
 async function loadStopMarkers() {
@@ -151,7 +141,6 @@ async function loadStopMarkers() {
         stopsLoaded = false;   // try again on the next refresh
     }
 }
-
 
 // ---- route lines (View Routes) ----
 
