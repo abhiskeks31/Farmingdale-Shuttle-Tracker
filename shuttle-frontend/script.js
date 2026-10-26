@@ -296,12 +296,51 @@ loadStops();
 
 // ---- Feedback ----
 
-$('feedback-form').addEventListener('submit', e => {
+// fills the driver list from GET /api/drivers
+async function loadDrivers() {
+    const select = $('feedback-driver');
+    try {
+        const drivers = (await getJson('/drivers')) || [];
+        select.innerHTML = '<option value="">Choose a driver</option>' + drivers.map(driver =>
+            `<option value="${driver.driverId}">${escapeHtml(driver.driverName)}</option>`
+        ).join('');
+    } catch (err) {
+        console.warn('Could not load the drivers.', err);
+        select.innerHTML = '<option value="">No drivers available</option>';
+        $('feedback-msg').textContent = 'Could not load the drivers. Is the backend running?';
+    }
+}
+
+// sends the rating with POST /api/driver-feedback
+$('feedback-form').addEventListener('submit', async e => {
     e.preventDefault();
-    // TODO: send the feedback to the backend
-    $('feedback-msg').textContent = 'Thanks. Your feedback was sent.';
-    $('feedback-text').value = '';
+    const driverId = Number($('feedback-driver').value);
+    const checked = document.querySelector('input[name="rating"]:checked');
+    if (!driverId || !checked) {
+        $('feedback-msg').textContent = 'Pick a driver and a rating.';
+        return;
+    }
+
+    const button = $('feedback-send');
+    button.disabled = true;
+    try {
+        const response = await fetch(`${API}/driver-feedback`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ driverId, rating: Number(checked.value) })
+        });
+        if (!response.ok) throw new Error('Request failed: ' + response.status);
+        $('feedback-msg').textContent = 'Thanks. Your rating was sent.';
+        $('feedback-form').reset();
+    } catch (err) {
+        console.warn('Could not send the rating.', err);
+        $('feedback-msg').textContent = 'Could not send your rating. Please try again.';
+    } finally {
+        button.disabled = false;
+    }
 });
+
+loadDrivers();
 
 
 // ---- Alerts and Admin Tools ----

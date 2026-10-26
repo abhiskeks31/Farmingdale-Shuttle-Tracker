@@ -60,9 +60,18 @@
     <div class="view" id="feedback">
         <h2>Feedback</h2>
         <form id="feedback-form">
-            <label for="feedback-text" class="hint">Tell us what to improve.</label>
-            <textarea id="feedback-text" required></textarea>
-            <button class="panel-btn" type="submit">Send feedback</button>
+            <label for="feedback-driver" class="hint">Choose your driver</label>
+            <select id="feedback-driver" required></select>
+
+            <p class="hint" id="stars-label">Your rating</p>
+            <div id="stars" role="radiogroup" aria-labelledby="stars-label">
+                <input type="radio" name="rating" id="star5" value="5" required><label for="star5" title="5 stars">&#9733;</label>
+                <input type="radio" name="rating" id="star4" value="4"><label for="star4" title="4 stars">&#9733;</label>
+                <input type="radio" name="rating" id="star3" value="3"><label for="star3" title="3 stars">&#9733;</label>
+                <input type="radio" name="rating" id="star2" value="2"><label for="star2" title="2 stars">&#9733;</label>
+                <input type="radio" name="rating" id="star1" value="1"><label for="star1" title="1 star">&#9733;</label>
+            </div>
+            <button class="panel-btn" type="submit" id="feedback-send">Send rating</button>
             <p class="note" id="feedback-msg" role="status"></p>
         </form>
     </div>

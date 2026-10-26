@@ -81,3 +81,42 @@ body {
 
 
 
+
+
+/* ---------- Feedback stars ---------- */
+
+/* the stars are listed 5 to 1 and shown in reverse, so a checked star also colors the ones before it */
+#stars {
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: flex-end;
+    margin-bottom: 10px;
+}
+
+#stars input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    padding: 0;
+    opacity: 0;
+}
+
+#stars label {
+    padding: 0 2px;
+    font-size: 30px;
+    line-height: 1;
+    color: #bbb;
+    cursor: pointer;
+}
+
+#stars input:checked ~ label,
+#stars label:hover,
+#stars label:hover ~ label {
+    color: #f1c40f;
+}
+
+#stars input:focus-visible + label {
+    outline: 3px solid var(--focus);
+    border-radius: 4px;
+}
