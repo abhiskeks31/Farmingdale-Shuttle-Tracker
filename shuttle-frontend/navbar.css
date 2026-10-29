@@ -44,6 +44,7 @@ button {
 }
 
 #brand {
+    margin-left: auto;
     font-size: 16px;
     font-weight: 500;
     line-height: 1.2;
@@ -90,6 +91,93 @@ button {
 
 .nav-toggle.is-open .icon-close {
     display: block;
+}
+
+
+/* notification bell */
+
+.bell {
+    position: relative;
+    width: 40px;
+    height: 40px;
+    margin-left: 8px;
+    padding: 0;
+    display: grid;
+    place-items: center;
+    background: transparent;
+    color: white;
+    border: none;
+    border-radius: 6px;
+}
+
+.bell:hover,
+.bell[aria-expanded="true"] {
+    background-color: rgba(255, 255, 255, 0.12);
+}
+
+.bell svg {
+    width: 24px;
+    height: 24px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.badge {
+    position: absolute;
+    top: 4px;
+    right: 3px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    box-sizing: border-box;
+    font: 600 10px/16px 'Poppins', sans-serif;
+    background-color: #d32f2f;
+    color: white;
+    border-radius: 999px;
+}
+
+.bell-menu {
+    position: fixed;
+    top: var(--header-h);
+    right: 12px;
+    width: 300px;
+    max-width: calc(100vw - 24px);
+    max-height: calc(100% - var(--header-h) - 12px);
+    padding: 16px;
+    box-sizing: border-box;
+    overflow-y: auto;
+    font-family: 'Poppins', sans-serif;
+    text-align: left;
+    background-color: var(--gray-light);
+    color: var(--ink);
+    border-radius: 0 0 10px 10px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+    z-index: 1001;
+}
+
+.bell-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.bell-head h2 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.bell-menu .panel-link {
+    font-family: inherit;
+}
+
+/* unread notifications get a teal edge */
+.alert-item.unread {
+    box-shadow: inset 3px 0 0 var(--teal);
 }
 
 

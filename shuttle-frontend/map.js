@@ -57,6 +57,46 @@ function showNotice(text) {
 }
 
 
+// ---- keep the shuttles driving ----
+
+// the backend only moves a shuttle after it is told to start a trip,
+// and stops it at the end of the trip, so the map starts the next one
+const nextTrip = {};
+const starting = {};
+
+async function keepDriving(shuttle, i, all) {
+    const id = shuttle.shuttleId;
+    if (starting[id]) return;
+    starting[id] = true;
+
+    try {
+        const status = await getJson(`/simulation/shuttle/${id}/status`);
+        if (status && status.running) return;   // already driving
+
+        const trips = await getJson(`/trips/route/${shuttle.routeId}`);
+        if (!trips || trips.length === 0) return;
+
+        // the shuttles begin spread out over the trip list, so they don't all drive the same trip
+        if (nextTrip[id] === undefined) nextTrip[id] = Math.floor(i * trips.length / all.length);
+
+        // try each trip once, some have only one stop and cannot start
+        for (let tries = 0; tries < trips.length; tries++) {
+            const place = nextTrip[id] % trips.length;
+            nextTrip[id] = place + 1;
+
+            const response = await fetch(
+                `${API}/simulation/shuttle/${id}/start?tripId=${trips[place].tripId}`,
+                { method: 'POST' }
+            );
+            if (response.ok || response.status === 409) return;   // 409: already started
+        }
+    } catch (err) {
+        // the next refresh tries again
+    } finally {
+        starting[id] = false;
+    }
+}
+
 // ---- live shuttles ----
 
 async function refreshShuttles() {
@@ -64,6 +104,8 @@ async function refreshShuttles() {
         loadStopMarkers();   // does nothing once the stops are on the map
         const shuttles = await getJson('/shuttles');
         if (!shuttles) throw new Error('No shuttle list');
+
+        shuttles.forEach(keepDriving);
 
         // the newest GPS point of every shuttle, all asked at the same time
         const spots = await Promise.all(shuttles.map(shuttle =>
