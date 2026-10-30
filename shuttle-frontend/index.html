@@ -19,7 +19,21 @@
     </button>
 
     <div id="brand">Farmingdale Shuttle Tracker<small>Farmingdale State College</small></div>
+
+    <button class="bell" id="bell" aria-label="Notifications" aria-expanded="false" aria-controls="bell-menu">
+        <svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z M10 20a2 2 0 0 0 4 0"/></svg>
+        <span class="badge" id="bell-count" hidden></span>
+    </button>
 </header>
+
+<!-- Notifications that open under the bell -->
+<div class="bell-menu" id="bell-menu" hidden>
+    <div class="bell-head">
+        <h2>Notifications</h2>
+        <button class="panel-link" id="bell-clear" type="button">Clear all</button>
+    </div>
+    <div id="bell-list"></div>
+</div>
 
 <!-- Vertical menu that opens under the hamburger -->
 <nav class="nav-menu" id="nav-menu" aria-label="Main menu">

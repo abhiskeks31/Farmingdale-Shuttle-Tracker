@@ -58,14 +58,13 @@ function nowAsClock() {
 
 const WEEK = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-// does "Mon-Fri" or "Mon-Thu" include today?
-// TODO: remove this when the backend filters by day.
+// Does a service-day range such as "Mon-Fri" include today?
 function runsToday(serviceDays) {
     const today = (new Date().getDay() + 6) % 7;   // Monday is 0
     return String(serviceDays).split(',').some(part => {
         const [start, end] = part.trim().split('-').map(day => WEEK.indexOf(day.trim().slice(0, 3)));
         if (start === -1) return false;
-        if (end === undefined || end === -1) return today === start;   // just one day
+        if (end === undefined || end === -1) return today === start;
         return today >= start && today <= end;
     });
 }
@@ -374,7 +373,101 @@ function drawAlerts() {
 
     $('admin-alerts').innerHTML = adminHtml || '<div class="empty">No active alerts.</div>';
     $('alert').innerHTML = '<h2>Alerts</h2>' + (riderHtml || '<div class="empty">No alerts right now.</div>');
+    drawBell();
 }
+
+
+// ---- notification bell ----
+
+// what this rider has cleared and read, saved in this browser
+let bellState = { cleared: [], seenUpTo: 0 };
+try {
+    bellState = { ...bellState, ...JSON.parse(localStorage.getItem('fst-bell')) };
+} catch (err) {
+    // storage is blocked, so nothing is cleared or read yet
+}
+
+function saveBell() {
+    try {
+        localStorage.setItem('fst-bell', JSON.stringify(bellState));
+    } catch (err) {
+        // storage is blocked, clearing just won't be remembered
+    }
+}
+
+const bell = $('bell');
+const bellMenu = $('bell-menu');
+
+function drawBell() {
+    const shown = alerts.filter(a => !bellState.cleared.includes(a.id)).reverse();   // newest on top
+    const unread = shown.filter(a => a.id > bellState.seenUpTo).length;
+
+    $('bell-count').textContent = unread > 9 ? '9+' : unread;
+    $('bell-count').hidden = unread === 0;
+    bell.setAttribute('aria-label', unread ? `Notifications, ${unread} unread` : 'Notifications');
+
+    $('bell-clear').hidden = shown.length === 0;
+    $('bell-list').innerHTML = shown.map(a => `
+        <div class="alert-item${a.id > bellState.seenUpTo ? ' unread' : ''}">
+            <span class="text">${escapeHtml(a.text)}<span class="when">Posted ${formatTime(a.id)}</span></span>
+            <button class="remove" type="button" data-id="${a.id}" aria-label="Clear this notification">&#10005;</button>
+        </div>`).join('') || '<div class="empty">You\'re all caught up.</div>';
+}
+
+function setBell(open) {
+    bellMenu.hidden = !open;
+    bell.setAttribute('aria-expanded', open);
+    if (open) return;
+
+    // closing the list marks everything in it as read
+    const newest = Math.max(0, ...alerts.map(a => a.id));
+    if (newest > bellState.seenUpTo) {
+        bellState.seenUpTo = newest;
+        saveBell();
+        drawBell();
+    }
+}
+
+bell.addEventListener('click', () => setBell(bellMenu.hidden));
+
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !bellMenu.hidden) setBell(false);
+});
+
+// clicking anywhere else closes the list
+document.addEventListener('click', e => {
+    // composedPath still knows where a removed button (like a cleared ✕) was
+    const path = e.composedPath();
+    if (!bellMenu.hidden && !path.includes(bellMenu) && !path.includes(bell)) setBell(false);
+});
+
+$('bell-list').addEventListener('click', e => {
+    const button = e.target.closest('button[data-id]');
+    if (!button) return;
+
+    bellState.cleared.push(Number(button.dataset.id));
+    saveBell();
+    drawBell();
+});
+
+$('bell-clear').addEventListener('click', () => {
+    alerts.forEach(a => {
+        if (!bellState.cleared.includes(a.id)) bellState.cleared.push(a.id);
+    });
+    saveBell();
+    drawBell();
+});
+
+// an alert posted in another tab shows up here right away
+window.addEventListener('storage', e => {
+    if (e.key !== 'fst-alerts') return;
+    try {
+        alerts = JSON.parse(e.newValue) || [];
+    } catch (err) {
+        alerts = [];
+    }
+    drawAlerts();
+});
 
 $('admin-login').addEventListener('submit', e => {
     e.preventDefault();
@@ -402,7 +495,9 @@ $('admin-alerts').addEventListener('click', e => {
     if (!button) return;
 
     alerts = alerts.filter(a => String(a.id) !== button.dataset.id);
+    bellState.cleared = bellState.cleared.filter(id => alerts.some(a => a.id === id));   // forget alerts that are gone
     saveAlerts();
+    saveBell();
     drawAlerts();
     $('admin-msg').textContent = 'Alert removed.';
 });
