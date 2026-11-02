@@ -469,13 +469,47 @@ window.addEventListener('storage', e => {
     drawAlerts();
 });
 
-$('admin-login').addEventListener('submit', e => {
+$('admin-login').addEventListener('submit', async e => {
     e.preventDefault();
-    // TODO: check the login with the backend. Right now any username and password works.
-    $('admin-pass').value = '';
-    $('admin-login').hidden = true;
-    $('admin-tools').hidden = false;
-    $('alert-text').focus();
+    const msg = $('login-msg');
+    msg.textContent = 'Signing in...';
+
+    try {
+        const csrfRes = await fetch(`${API}/auth/csrf`, { credentials: 'include' });
+        if (!csrfRes.ok) throw new Error('csrf');
+        const csrf = await csrfRes.json();
+
+        const loginRes = await fetch(`${API}/auth/login`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+                [csrf.headerName || 'X-CSRF-TOKEN']: csrf.token
+            },
+            body: JSON.stringify({
+                username: $('admin-user').value.trim(),
+                password: $('admin-pass').value
+            })
+        });
+
+        if (!loginRes.ok) {
+            msg.textContent = 'Wrong username or password.';
+            return;
+        }
+        const result = await loginRes.json();
+        if (!result.authenticated) {
+            msg.textContent = 'Wrong username or password.';
+            return;
+        }
+
+        msg.textContent = '';
+        $('admin-pass').value = '';
+        $('admin-login').hidden = true;
+        $('admin-tools').hidden = false;
+        $('alert-text').focus();
+    } catch (err) {
+        msg.textContent = 'Could not sign in. Is the backend running?';
+    }
 });
 
 $('alert-form').addEventListener('submit', e => {
