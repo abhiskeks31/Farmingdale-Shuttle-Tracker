@@ -469,46 +469,74 @@ window.addEventListener('storage', e => {
     drawAlerts();
 });
 
+/*
+ * Admin Login
+ * Authenticates administrators using Spring Security.
+ * Credentials are verified against the Supabase admin table.
+ */
 $('admin-login').addEventListener('submit', async e => {
     e.preventDefault();
-    const msg = $('login-msg');
-    msg.textContent = 'Signing in...';
+
+    const username = $('admin-user').value;
+    const password = $('admin-pass').value;
+    const loginMsg = $('login-msg');
+
+    loginMsg.textContent = 'Signing in...';
 
     try {
-        const csrfRes = await fetch(`${API}/auth/csrf`, { credentials: 'include' });
-        if (!csrfRes.ok) throw new Error('csrf');
-        const csrf = await csrfRes.json();
+        // Step 1: Retrieve a CSRF token and session cookie.
+        const csrfResponse = await fetch(`${API}/auth/csrf`, {
+            credentials: 'include'
+        });
 
-        const loginRes = await fetch(`${API}/auth/login`, {
+        if (!csrfResponse.ok) {
+            throw new Error('Could not retrieve CSRF token');
+        }
+
+        const csrf = await csrfResponse.json();
+
+        // Step 2: Submit login credentials to Spring Security.
+        const loginResponse = await fetch(`${API}/auth/login`, {
             method: 'POST',
             credentials: 'include',
             headers: {
-                'Content-Type': 'application/json',
-                [csrf.headerName || 'X-CSRF-TOKEN']: csrf.token
+                'Content-Type': 'application/x-www-form-urlencoded',
+                [csrf.headerName]: csrf.token
             },
-            body: JSON.stringify({
-                username: $('admin-user').value.trim(),
-                password: $('admin-pass').value
+            body: new URLSearchParams({
+                username: username,
+                password: password
             })
         });
 
-        if (!loginRes.ok) {
-            msg.textContent = 'Wrong username or password.';
-            return;
-        }
-        const result = await loginRes.json();
-        if (!result.authenticated) {
-            msg.textContent = 'Wrong username or password.';
+        if (!loginResponse.ok) {
+            loginMsg.textContent = 'Invalid username or password.';
             return;
         }
 
-        msg.textContent = '';
+        // Step 3: Verify the authenticated session.
+        const adminResponse = await fetch(`${API}/auth/me`, {
+            credentials: 'include'
+        });
+
+        if (!adminResponse.ok) {
+            throw new Error('Could not verify admin session');
+        }
+
+        const admin = await adminResponse.json();
+
+        // Step 4: Display the existing admin tools.
         $('admin-pass').value = '';
         $('admin-login').hidden = true;
         $('admin-tools').hidden = false;
-        $('alert-text').focus();
-    } catch (err) {
-        msg.textContent = 'Could not sign in. Is the backend running?';
+
+        $('admin-msg').textContent =
+            `Logged in as ${admin.username}`;
+
+    } catch (error) {
+        console.error('Admin login failed:', error);
+        loginMsg.textContent =
+            'Unable to sign in. Please try again.';
     }
 });
 
@@ -536,11 +564,137 @@ $('admin-alerts').addEventListener('click', e => {
     $('admin-msg').textContent = 'Alert removed.';
 });
 
-$('admin-signout').addEventListener('click', () => {
-    $('admin-msg').textContent = '';
-    $('admin-login').hidden = false;
-    $('admin-tools').hidden = true;
-    $('admin-user').focus();
+/*
+ * Admin Logout
+ * Ends the authenticated Spring Security session.
+ */
+$('admin-signout').addEventListener('click', async () => {
+
+    const adminMsg = $('admin-msg');
+    const signoutButton = $('admin-signout');
+
+    adminMsg.textContent = 'Signing out...';
+    signoutButton.disabled = true;
+
+    try {
+        // Step 1: Retrieve a fresh CSRF token.
+        const csrfResponse = await fetch(`${API}/auth/csrf`, {
+            credentials: 'include'
+        });
+
+        if (!csrfResponse.ok) {
+            throw new Error('Could not retrieve CSRF token');
+        }
+
+        const csrf = await csrfResponse.json();
+
+        // Step 2: Send logout request to Spring Security.
+        const logoutResponse = await fetch(`${API}/auth/logout`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                [csrf.headerName]: csrf.token
+            }
+        });
+
+        if (!logoutResponse.ok) {
+            throw new Error('Logout failed');
+        }
+
+        // Step 3: Reset the frontend after successful logout.
+        $('admin-login').reset();
+        $('admin-login').hidden = false;
+        $('admin-tools').hidden = true;
+
+        $('login-msg').textContent = 'Signed out successfully.';
+        adminMsg.textContent = '';
+
+        $('admin-user').focus();
+
+    } catch (error) {
+        console.error('Admin logout failed:', error);
+        adminMsg.textContent = 'Unable to sign out. Please try again.';
+
+    } finally {
+        signoutButton.disabled = false;
+    }
+
 });
 
+/*
+   * Restore Admin Session
+   * Checks whether the browser already has an authenticated
+   * Spring Security session when the website loads.
+   */
+async function restoreAdminSession() {
+    try {
+        const response = await fetch(`${API}/auth/me`, {
+            credentials: 'include'
+        });
+
+        // No authenticated session exists.
+        if (response.status === 401 || response.status === 403) {
+            $('admin-login').hidden = false;
+            $('admin-tools').hidden = true;
+            return;
+        }
+
+        if (!response.ok) {
+            throw new Error('Could not check admin session');
+        }
+
+        // An authenticated administrator session exists.
+        const admin = await response.json();
+
+        $('admin-login').hidden = true;
+        $('admin-tools').hidden = false;
+
+        $('admin-msg').textContent =
+            `Logged in as ${admin.username}`;
+
+    } catch (error) {
+        console.error('Session restoration failed:', error);
+
+        // Keep admin controls hidden if verification fails.
+        $('admin-login').hidden = false;
+        $('admin-tools').hidden = true;
+
+        $('login-msg').textContent =
+            'Could not verify admin session.';
+    }
+}
+
 drawAlerts();
+
+// Check for an existing admin session whenever the page loads.
+restoreAdminSession();
+
+/*
+ * Admin Access Check
+ * Revalidates the administrator session whenever
+ * the Admin Tools navigation button is clicked.
+ */
+const adminNavButton = document.querySelector(
+    '.nav-item[data-view="admin"]'
+);
+
+adminNavButton.addEventListener('click', async () => {
+
+    // Hide the controls until Spring Security verifies the session.
+    $('admin-tools').hidden = true;
+
+    // Check the current session against the backend.
+    await restoreAdminSession();
+});
+
+/*
+ * Recheck the session when the user returns
+ * to the browser tab.
+ */
+document.addEventListener('visibilitychange', async () => {
+
+    // Only check when the tab becomes visible.
+    if (document.visibilityState === 'visible') {
+        await restoreAdminSession();
+    }
+});
