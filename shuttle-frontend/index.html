@@ -104,6 +104,8 @@
             <p class="note" id="login-msg" role="status"></p>
         </form>
 
+
+
         <div id="admin-tools" hidden>
             <form id="alert-form">
                 <label for="alert-text" class="hint">Message riders will see</label>
@@ -111,8 +113,33 @@
                 <button class="panel-btn" type="submit">Post alert</button>
             </form>
 
+
+
             <h3>Active alerts</h3>
             <div id="admin-alerts"></div>
+
+            <h3>Update seats</h3>
+            <form id="occupancy-form">
+                <label for="occ-shuttle" class="hint">Shuttle</label>
+                <select id="occ-shuttle" required></select>
+                <label for="occ-boarding" class="hint">Passengers boarding</label>
+                <input id="occ-boarding" type="number" min="0" value="0" required>
+                <label for="occ-exiting" class="hint">Passengers exiting</label>
+                <input id="occ-exiting" type="number" min="0" value="0" required>
+                <button class="panel-btn" type="submit">Update seats</button>
+                <p class="note" id="occ-msg" role="status"></p>
+            </form>
+
+            <h3>Start or stop a trip</h3>
+            <form id="trip-form">
+                <label for="trip-shuttle" class="hint">Shuttle</label>
+                <select id="trip-shuttle" required></select>
+                <label for="trip-trip" class="hint">Trip</label>
+                <select id="trip-trip" required></select>
+                <button class="panel-btn" type="submit">Start trip</button>
+                <button class="panel-btn panel-btn-light" type="button" id="trip-stop">Stop trip</button>
+                <p class="note" id="trip-msg" role="status"></p>
+            </form>
 
             <button class="panel-btn panel-btn-light" id="admin-signout" type="button">Sign out</button>
             <p class="note" id="admin-msg" role="status"></p>

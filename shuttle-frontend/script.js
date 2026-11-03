@@ -664,6 +664,100 @@ async function restoreAdminSession() {
     }
 }
 
+// ---- Admin Tools: seats and trips ----
+
+// sends a POST that needs the admin login (gets a CSRF token first)
+async function adminPost(path, body) {
+    const csrfRes = await fetch(`${API}/auth/csrf`, {
+        credentials: 'include',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    });
+    if (!csrfRes.ok) throw new Error('csrf');
+    const csrf = await csrfRes.json();
+
+    const headers = {
+        'X-Requested-With': 'XMLHttpRequest',
+        [csrf.headerName || 'X-CSRF-TOKEN']: csrf.token
+    };
+    if (body) headers['Content-Type'] = 'application/json';
+
+    return fetch(API + path, {
+        method: 'POST',
+        credentials: 'include',
+        headers,
+        body: body ? JSON.stringify(body) : undefined
+    });
+}
+
+// a short message for a request that did not work
+function whyFailed(response) {
+    if (response.status === 401 || response.status === 403) return 'Please sign in again.';
+    if (response.status === 409) return 'That bus is already running.';
+    if (response.status === 400) return 'This could not be done. A trip needs 2 or more stops.';
+    return 'Something went wrong (' + response.status + ').';
+}
+
+// fills the shuttle and trip lists
+async function loadAdminLists() {
+    try {
+        const shuttles = (await getJson('/shuttles')) || [];
+        const shuttleOptions = shuttles.map(s =>
+            `<option value="${s.shuttleId}">Bus ${escapeHtml(s.vehicleNumber)}</option>`).join('');
+        $('occ-shuttle').innerHTML = shuttleOptions;
+        $('trip-shuttle').innerHTML = shuttleOptions;
+
+        const trips = (await getJson('/trips')) || [];
+        $('trip-trip').innerHTML = trips.map(t =>
+            `<option value="${t.tripId}">Trip ${t.tripId} to ${escapeHtml(t.finalDestination || 'shuttle')} (${escapeHtml(t.serviceDays)})</option>`).join('');
+    } catch (err) {
+        $('occ-msg').textContent = 'Could not load buses and trips. Is the backend running?';
+    }
+}
+
+// Update seats
+$('occupancy-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const msg = $('occ-msg');
+    msg.textContent = 'Updating...';
+    try {
+        const response = await adminPost(`/occupancy/shuttle/${$('occ-shuttle').value}`, {
+            boarding: Number($('occ-boarding').value),
+            exiting: Number($('occ-exiting').value)
+        });
+        msg.textContent = response.ok ? 'Seats updated.' : whyFailed(response);
+    } catch (err) {
+        msg.textContent = 'Could not reach the backend.';
+    }
+});
+
+// Start trip
+$('trip-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const msg = $('trip-msg');
+    msg.textContent = 'Starting...';
+    try {
+        const response = await adminPost(
+            `/simulation/shuttle/${$('trip-shuttle').value}/start?tripId=${$('trip-trip').value}`);
+        msg.textContent = response.ok ? 'Trip started.' : whyFailed(response);
+    } catch (err) {
+        msg.textContent = 'Could not reach the backend.';
+    }
+});
+
+// Stop trip
+$('trip-stop').addEventListener('click', async () => {
+    const msg = $('trip-msg');
+    msg.textContent = 'Stopping...';
+    try {
+        const response = await adminPost(`/simulation/shuttle/${$('trip-shuttle').value}/stop`);
+        msg.textContent = response.ok ? 'Trip stopped.' : whyFailed(response);
+    } catch (err) {
+        msg.textContent = 'Could not reach the backend.';
+    }
+});
+
+loadAdminLists();
+
 drawAlerts();
 
 // Check for an existing admin session whenever the page loads.
