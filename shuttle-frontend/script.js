@@ -689,11 +689,15 @@ async function adminPost(path, body) {
     });
 }
 
-// a short message for a request that did not work
-function whyFailed(response) {
+/// a short message for a request that did not work
+function whyFailed(response, what) {
     if (response.status === 401 || response.status === 403) return 'Please sign in again.';
     if (response.status === 409) return 'That bus is already running.';
-    if (response.status === 400) return 'This could not be done. A trip needs 2 or more stops.';
+    if (response.status === 400) {
+        return what === 'seats'
+            ? 'Those numbers do not fit this bus. Check boarding, exiting and capacity.'
+            : 'This could not be done. A trip needs 2 or more stops.';
+    }
     return 'Something went wrong (' + response.status + ').';
 }
 
@@ -724,7 +728,7 @@ $('occupancy-form').addEventListener('submit', async e => {
             boarding: Number($('occ-boarding').value),
             exiting: Number($('occ-exiting').value)
         });
-        msg.textContent = response.ok ? 'Seats updated.' : whyFailed(response);
+        msg.textContent = response.ok ? 'Seats updated.' : whyFailed(response, 'seats');
     } catch (err) {
         msg.textContent = 'Could not reach the backend.';
     }
