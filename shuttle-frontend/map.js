@@ -9,15 +9,45 @@ const shuttleMarkers = {};  // shuttleId -> marker
 let stopsLoaded = false;
 
 
-// ---- icons and popups ----
+// each shuttle gets its own color so they are easy to tell apart
+const SHUTTLE_COLORS = ['#006F71', '#7B40BA', '#D9622B', '#1F6FD1', '#C2185B'];
 
-const shuttleIcon = L.divIcon({
-    className: 'shuttle-marker',
-    html: '<div style="font-size:28px;line-height:28px;text-align:center;">&#128652;</div>',
-    iconSize: [28, 28],
-    iconAnchor: [14, 14],
-    popupAnchor: [0, -14]
-});
+function shuttleColor(id) {
+    const n = parseInt(id, 10);
+    return SHUTTLE_COLORS[(Number.isFinite(n) ? n : 0) % SHUTTLE_COLORS.length];
+}
+
+function shuttleIcon(shuttle) {
+    const color = shuttleColor(shuttle.shuttleId);
+    return L.divIcon({
+        className: 'shuttle-marker',
+        html: `<div class="shuttle-pin" style="--pin: ${color}">
+            <div class="shuttle-heading"></div>
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="white">
+                <!-- bus body -->
+                <rect x="2" y="6" width="20" height="11" rx="3"/>
+                <!-- two windows and the windshield -->
+                <rect x="4" y="8" width="5" height="4" fill="${color}"/>
+                <rect x="10" y="8" width="5" height="4" fill="${color}"/>
+                <rect x="16" y="8" width="4" height="4" rx="1" fill="${color}"/>
+                <!-- passengers -->
+                <circle cx="6.5" cy="10" r="1.2"/>
+                <ellipse cx="6.5" cy="12.2" rx="1.8" ry="1"/>
+                <circle cx="12.5" cy="10" r="1.2"/>
+                <ellipse cx="12.5" cy="12.2" rx="1.8" ry="1"/>
+                <!-- wheels -->
+                <circle cx="7" cy="17.5" r="2.4"/>
+                <circle cx="17" cy="17.5" r="2.4"/>
+                <circle cx="7" cy="17.5" r="1" fill="${color}"/>
+                <circle cx="17" cy="17.5" r="1" fill="${color}"/>
+            </svg>
+            <span class="shuttle-label">${escapeHtml(shuttle.vehicleNumber)}</span>
+        </div>`,
+        iconSize: [38, 38],
+        iconAnchor: [19, 19],
+        popupAnchor: [0, -20]
+    });
+}
 
 const stopIcon = L.divIcon({
     className: 'stop-marker',
@@ -29,6 +59,23 @@ const stopIcon = L.divIcon({
 });
 
 
+
+// turns the arrow on a shuttle pin toward the way it is driving
+function pointMarker(marker, from, lat, lng) {
+    // ignore tiny GPS jitter (about 3 meters)
+    if (Math.abs(from.lat - lat) < 0.00003 && Math.abs(from.lng - lng) < 0.00003) return;
+
+    const toRad = d => d * Math.PI / 180;
+    const y = Math.sin(toRad(lng - from.lng)) * Math.cos(toRad(lat));
+    const x = Math.cos(toRad(from.lat)) * Math.sin(toRad(lat)) -
+              Math.sin(toRad(from.lat)) * Math.cos(toRad(lat)) * Math.cos(toRad(lng - from.lng));
+    const bearing = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+
+    const arrow = marker.getElement() && marker.getElement().querySelector('.shuttle-heading');
+    if (!arrow) return;
+    arrow.style.transform = `rotate(${bearing}deg)`;
+    arrow.style.opacity = '1';
+}
 
 function shuttlePopup(shuttle, spot) {
     const capacity = Number(shuttle.capacity) || 0;
@@ -82,11 +129,12 @@ async function refreshShuttles() {
             const marker = shuttleMarkers[shuttle.shuttleId];
 
             if (marker) {
+                pointMarker(marker, marker.getLatLng(), lat, lng);
                 marker.setLatLng([lat, lng]);
                 marker.setPopupContent(shuttlePopup(shuttle, spot));
             } else {
                 shuttleMarkers[shuttle.shuttleId] = L.marker([lat, lng], {
-                    icon: shuttleIcon,
+                    icon: shuttleIcon(shuttle),
                     zIndexOffset: 1000,
                     title: shuttle.vehicleNumber
                 }).addTo(shuttleLayer).bindPopup(shuttlePopup(shuttle, spot));
@@ -107,7 +155,7 @@ async function refreshShuttles() {
     }
 }
 
-// ---- stop markers ----
+// stop markers
 
 async function loadStopMarkers() {
     if (stopsLoaded) return;
@@ -141,7 +189,7 @@ async function loadStopMarkers() {
     }
 }
 
-// ---- route lines (View Routes) ----
+// route lines (View Routes)
 
 const routeLayers = {};   // routeId -> the drawn route, so it is only built once
 const routeWanted = {};   // routeId -> true while its switch is on
@@ -210,7 +258,9 @@ async function buildRouteLayer(route, color) {
             }
 
             allPoints.push(...points);
-            L.polyline(points, { color, weight: 5, opacity: 0.85 }).addTo(group);
+            // white outline underneath so the colored line stands out from the map
+            L.polyline(points, { color: 'white', weight: 9, opacity: 0.9, lineCap: 'round', lineJoin: 'round' }).addTo(group);
+            L.polyline(points, { color, weight: 5, opacity: 1, lineCap: 'round', lineJoin: 'round' }).addTo(group);
         }
 
         // make sure every stop is inside the zoom, even if a piece of line is missing

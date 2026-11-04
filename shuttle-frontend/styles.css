@@ -14,8 +14,7 @@
     outline-offset: 2px;
 }
 
-
-/* ---------- Splash screen ---------- */
+/* Splash screen */
 
 body {
     margin: 0;
@@ -68,6 +67,80 @@ body {
     to { left: 100%; }
 }
 
+/* map shuttle marker */
+.shuttle-marker {
+    background: none;
+    border: none;
+}
+
+.shuttle-pin {
+    position: relative;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: var(--pin, var(--teal));
+    border: 3px solid #fff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, .35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+}
+
+.shuttle-pin::before {
+    content: "";
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    border: 3px solid var(--pin, var(--teal));
+    animation: pulse 2s ease-out infinite;
+}
+
+/* shuttle name under the pin */
+.shuttle-label {
+    position: absolute;
+    top: 38px;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    padding: 1px 6px;
+    border-radius: 8px;
+    background: var(--pin, var(--teal));
+    color: #fff;
+    font: bold 11px Arial, sans-serif;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .3);
+}
+
+/* small arrow on the pin's edge, turned toward the driving direction */
+.shuttle-heading {
+    position: absolute;
+    inset: -3px;
+    opacity: 0;
+    transition: transform .6s ease, opacity .3s;
+    pointer-events: none;
+}
+
+.shuttle-heading::after {
+    content: "";
+    position: absolute;
+    top: -9px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-bottom: 9px solid var(--pin, var(--teal));
+    filter: drop-shadow(0 -1px 0 #fff);
+}
+
+@keyframes pulse {
+    from { transform: scale(1); opacity: .7; }
+    to { transform: scale(1.9); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .shuttle-pin::before { animation: none; }
+}
+
 /* ---------- Map ---------- */
 #map {
     display: none;
@@ -79,11 +152,6 @@ body {
     z-index: 0;
 }
 
-
-
-
-
-/* ---------- Feedback stars ---------- */
 
 /* the stars are listed 5 to 1 and shown in reverse, so a checked star also colors the ones before it */
 #stars {

@@ -19,9 +19,7 @@ async function getJson(path) {
     return response.json();
 }
 
-const ROUTE_COLORS = ['#7B40BA', '#4081BA', '#BA8140', '#2E9E6B', '#C0392B'];
-
-
+const ROUTE_COLORS = ['#2D9CDB', '#E8505B', '#9B51E0', '#F2994A', '#27AE60'];
 
 
 // "farmingdale_lirr" -> "Farmingdale LIRR"
@@ -58,7 +56,7 @@ function nowAsClock() {
 
 const WEEK = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-// Does a service-day range such as "Mon-Fri" include today?
+// Does a service-day range such as "Mon-Fri" include today
 function runsToday(serviceDays) {
     const today = (new Date().getDay() + 6) % 7;   // Monday is 0
     return String(serviceDays).split(',').some(part => {
@@ -108,7 +106,7 @@ menuItems.forEach(item => {
 });
 
 
-// ---- View Routes: one switch for each route ----
+// ---- view routes one switch for each route ----
 
 async function loadRouteToggles() {
     const box = $('route-toggles');
@@ -152,8 +150,7 @@ async function loadRouteToggles() {
 
 loadRouteToggles();
 
-
-// ---- Search Routes ----
+// -- Search Routes --
 
 const fromSelect = $('search-from');
 const toSelect = $('search-to');
@@ -191,7 +188,7 @@ async function getTripStops(tripId) {
 
 // Today's trips that go from one stop to another, earliest first.
 // TODO: when the backend adds GET /trips/search?fromStopId=&toStopId=,
-// replace this with one call to it.
+// need to replace this with one call to it.
 async function findTrips(fromId, toId) {
     const trips = (await getJson('/trips')) || [];
     const todays = trips.filter(trip => runsToday(trip.serviceDays));
@@ -293,8 +290,6 @@ resultsBox.addEventListener('click', e => {
 loadStops();
 
 
-// ---- Feedback ----
-
 // fills the driver list from GET /api/drivers
 async function loadDrivers() {
     const select = $('feedback-driver');
@@ -384,7 +379,7 @@ let bellState = { cleared: [], seenUpTo: 0 };
 try {
     bellState = { ...bellState, ...JSON.parse(localStorage.getItem('fst-bell')) };
 } catch (err) {
-    // storage is blocked, so nothing is cleared or read yet
+
 }
 
 function saveBell() {
