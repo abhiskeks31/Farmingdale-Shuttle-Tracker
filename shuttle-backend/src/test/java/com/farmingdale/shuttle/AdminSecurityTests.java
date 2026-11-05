@@ -75,8 +75,7 @@ class AdminSecurityTests {
     @ParameterizedTest
     @CsvSource({
             "/api/health,200", "/api/drivers,200", "/api/driver-feedback,200",
-            "/api/driver-feedback/driver/1,200", "/api/routes,200", "/api/route-stops,200",
-            "/api/route-stops/route/1,200", "/api/schedules,200", "/api/schedules/route/1,200",
+            "/api/driver-feedback/driver/1,200", "/api/routes,200", "/api/schedules,200", "/api/schedules/route/1,200",
             "/api/stops,200", "/api/shuttles,200", "/api/shuttles/1/available-seats,200",
             "/api/trips,200", "/api/trips/1,404", "/api/trips/route/1,200", "/api/trips/1/stops,404",
             "/api/gps-locations,200", "/api/gps-locations/shuttle/1/latest,404",
@@ -262,7 +261,7 @@ class AdminSecurityTests {
     @Import({SecurityConfig.class, CORSconfig.class, AdminAuthController.class,
             AdminUserDetailsService.class, AdminLoginService.class,
             HealthController.class, DriverController.class, DriverFeedbackController.class,
-            RouteController.class, RouteStopController.class, ScheduleController.class,
+            RouteController.class, ScheduleController.class,
             StopController.class, ShuttleController.class, TripController.class,
             GPSLocationController.class, OccupancyController.class,
             GPSSimulationController.class, SimulationRouteController.class})
@@ -271,7 +270,6 @@ class AdminSecurityTests {
         @Bean DriverService drivers() { return mock(DriverService.class); }
         @Bean DriverFeedbackService feedback() { return mock(DriverFeedbackService.class); }
         @Bean RouteService routes() { return mock(RouteService.class); }
-        @Bean RouteStopService routeStops() { return mock(RouteStopService.class); }
         @Bean ScheduleService schedules() { return mock(ScheduleService.class); }
         @Bean StopService stops() { return mock(StopService.class); }
         @Bean ShuttleService shuttles() { return mock(ShuttleService.class); }
