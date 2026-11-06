@@ -78,10 +78,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET,
                                 "/api/health", "/api/drivers",
                                 "/api/driver-feedback", "/api/driver-feedback/driver/*",
-                                "/api/routes", "/api/route-stops", "/api/route-stops/route/*",
-                                "/api/schedules", "/api/schedules/route/*", "/api/stops",
-                                "/api/shuttles", "/api/shuttles/*/available-seats",
-                                "/api/trips", "/api/trips/*", "/api/trips/route/*", "/api/trips/*/stops",
+                                "/api/routes", "/api/schedules", "/api/schedules/route/*", "/api/stops",
+                                "/api/shuttles", "/api/shuttles/*/available-seats", "/api/health", "/api/drivers",
+                                "/api/alerts", "/api/trips", "/api/trips/*", "/api/trips/route/*", "/api/trips/*/stops",
                                 "/api/gps-locations", "/api/gps-locations/shuttle/*/latest",
                                 "/api/occupancy", "/api/occupancy/shuttle/*/latest",
                                 "/api/simulation/routes/*/*", "/api/simulation/shuttle/*/status").permitAll()
