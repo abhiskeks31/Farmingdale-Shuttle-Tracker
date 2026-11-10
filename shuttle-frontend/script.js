@@ -339,38 +339,205 @@ loadDrivers();
 
 // ---- Alerts and Admin Tools ----
 
-// TODO: use the backend for alerts. For now they are saved in this browser only.
 let alerts = [];
-try {
-    alerts = JSON.parse(localStorage.getItem('fst-alerts')) || [];
-} catch (err) {
-    // storage is blocked, so start with no alerts
-}
 
-function saveAlerts() {
+// Retrieves active alerts from the Spring Boot backend.
+// Alerts are stored in Supabase rather than the browser's localStorage.
+async function loadAlerts() {
     try {
-        localStorage.setItem('fst-alerts', JSON.stringify(alerts));
-    } catch (err) {
-        // storage is blocked, the alerts just won't be remembered
+        // Send a public GET request to retrieve active alerts.
+        const response = await fetch(`${API}/alerts`);
+
+        // Throw an error if the backend request fails.
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        // Convert the JSON response into our alerts array.
+        alerts = await response.json();
+
+        // Refresh the alerts displayed on the frontend.
+        drawAlerts();
+        drawBell();
+
+    } catch (error) {
+        // Log errors to help with debugging.
+        console.error("Failed to load alerts:", error);
+
+        // Inform the user if alerts cannot be retrieved.
+        // Previously loaded alerts remain in the alerts array.
+        $('alert').innerHTML =
+            '<h2>Alerts</h2><div class="empty">Unable to load alerts.</div>';
     }
+
 }
 
-// fills the alert list in the Alert panel (riders) and in Admin Tools
+// Sends a new alert to Spring Boot using the logged-in admin session.
+async function postAlert(title, message, alertType = 'INFO') {
+
+    // Retrieve the current CSRF token for this session.
+    const csrfResponse = await fetch(`${API}/auth/csrf`, {
+        credentials: 'include'
+    });
+
+    if (!csrfResponse.ok) {
+        throw new Error('Unable to retrieve CSRF token.');
+    }
+
+    const csrf = await csrfResponse.json();
+
+    // Send the announcement to the protected alert endpoint.
+    const response = await fetch(`${API}/alerts`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+            'Content-Type': 'application/json',
+            [csrf.headerName]: csrf.token
+        },
+        body: JSON.stringify({
+            title: title.trim(),
+            message: message.trim(),
+            alertType: alertType,
+            expiresAt: null
+        })
+    });
+
+    // Handle common authentication and validation failures.
+    if (response.status === 401) {
+        throw new Error('Please log in as an administrator.');
+    }
+
+    if (response.status === 403) {
+        throw new Error('Access denied or invalid CSRF token.');
+    }
+
+    if (!response.ok) {
+        throw new Error(`Failed to post alert (HTTP ${response.status}).`);
+    }
+
+    // Reload alerts so the student page and bell update.
+    await loadAlerts();
+
+    return true;
+}
+
+// Deactivates an existing alert through the Spring Boot backend.
+// Only authenticated administrators can perform this operation.
+async function deactivateAlert(alertId) {
+
+    // Retrieve a fresh CSRF token for the current admin session.
+    const csrfResponse = await fetch(`${API}/auth/csrf`, {
+        credentials: 'include'
+    });
+
+    if (!csrfResponse.ok) {
+        throw new Error('Unable to retrieve CSRF token.');
+    }
+
+    const csrf = await csrfResponse.json();
+
+    // Send a protected PATCH request to deactivate the alert.
+    const response = await fetch(
+        `${API}/alerts/${encodeURIComponent(alertId)}/deactivate`,
+        {
+            method: 'PATCH',
+            credentials: 'include',
+            headers: {
+                [csrf.headerName]: csrf.token
+            }
+        }
+    );
+
+    if (response.status === 401) {
+        throw new Error('Please log in as an administrator.');
+    }
+
+    if (response.status === 403) {
+        throw new Error('Access denied or invalid CSRF token.');
+    }
+
+    if (response.status === 404) {
+        throw new Error('Alert not found.');
+    }
+
+    if (!response.ok) {
+        throw new Error(
+            `Failed to deactivate alert (HTTP ${response.status}).`
+        );
+    }
+
+    // Reload active alerts so removed announcements disappear
+    // from the student page, admin list, and notification bell.
+    await loadAlerts();
+}
+
+// Displays backend alerts in both the admin and student interfaces.
 function drawAlerts() {
+
+    // Store the generated HTML for each interface separately.
     let adminHtml = '';
     let riderHtml = '';
 
-    alerts.forEach(a => {
-        const text = `<span class="text">${escapeHtml(a.text)}<span class="when">Posted ${formatTime(a.id)}</span></span>`;
-        adminHtml += `<div class="alert-item">${text}<button class="remove" type="button" data-id="${a.id}" aria-label="Remove this alert">Remove</button></div>`;
-        riderHtml = `<div class="alert-item">${text}</div>` + riderHtml;   // newest on top
+    // Loop through every active alert returned by the backend.
+    alerts.forEach(alert => {
+
+        // Escape user-provided text to prevent HTML injection.
+        const title = escapeHtml(alert.title);
+        const message = escapeHtml(alert.message);
+        const type = escapeHtml(alert.alertType);
+
+        // Format the alert's creation timestamp for display.
+        const posted = alert.createdAt
+            ? formatTime(new Date(alert.createdAt).getTime())
+            : 'Recently';
+
+        // Create the shared alert content.
+        const content = `
+            <span class="text">
+                <strong>${title}</strong>
+                <span class="hint">${type}</span>
+                <span>${message}</span>
+                <span class="when">Posted ${posted}</span>
+            </span>
+        `;
+
+        // Admins receive an additional Remove button.
+        // The button will later call the backend deactivation endpoint.
+        adminHtml += `
+            <div class="alert-item">
+                ${content}
+                <button class="remove"
+                        type="button"
+                        data-id="${alert.alertId}">
+                    Remove
+                </button>
+            </div>
+        `;
+
+        // Students can view announcements but cannot remove them.
+        riderHtml += `
+            <div class="alert-item">
+                ${content}
+            </div>
+        `;
     });
 
-    $('admin-alerts').innerHTML = adminHtml || '<div class="empty">No active alerts.</div>';
-    $('alert').innerHTML = '<h2>Alerts</h2>' + (riderHtml || '<div class="empty">No alerts right now.</div>');
-    drawBell();
+    // Update the administrative alerts list.
+    $('admin-alerts').innerHTML =
+        adminHtml || '<div class="empty">No active alerts.</div>';
+
+    // Update the student-facing alerts page.
+    $('alert').innerHTML =
+        '<h2>Alerts</h2>' +
+        (riderHtml || '<div class="empty">No alerts right now.</div>');
 }
 
+// Load alerts when the webpage initially opens.
+loadAlerts();
+
+// Check Supabase for updated announcements every 30 seconds.
+// This allows new or deactivated alerts to appear without a page refresh.
+setInterval(loadAlerts, 30000);
 
 // ---- notification bell ----
 
@@ -393,34 +560,95 @@ function saveBell() {
 const bell = $('bell');
 const bellMenu = $('bell-menu');
 
-function drawBell() {
-    const shown = alerts.filter(a => !bellState.cleared.includes(a.id)).reverse();   // newest on top
-    const unread = shown.filter(a => a.id > bellState.seenUpTo).length;
+// Displays active backend alerts in the notification bell.
+    function drawBell() {
 
-    $('bell-count').textContent = unread > 9 ? '9+' : unread;
-    $('bell-count').hidden = unread === 0;
-    bell.setAttribute('aria-label', unread ? `Notifications, ${unread} unread` : 'Notifications');
+        // Exclude notifications dismissed by this browser.
+        // Sort newest first without changing the original alerts array.
+        const shown = alerts
+            .filter(a => !bellState.cleared.includes(a.alertId))
+            .sort((a, b) => b.alertId - a.alertId);
 
-    $('bell-clear').hidden = shown.length === 0;
-    $('bell-list').innerHTML = shown.map(a => `
-        <div class="alert-item${a.id > bellState.seenUpTo ? ' unread' : ''}">
-            <span class="text">${escapeHtml(a.text)}<span class="when">Posted ${formatTime(a.id)}</span></span>
-            <button class="remove" type="button" data-id="${a.id}" aria-label="Clear this notification">&#10005;</button>
-        </div>`).join('') || '<div class="empty">You\'re all caught up.</div>';
-}
+        // Count alerts posted after the last notification viewed.
+        const unread = shown.filter(
+            a => a.alertId > bellState.seenUpTo
+        ).length;
 
+        // Update the notification badge.
+        $('bell-count').textContent = unread > 9 ? '9+' : unread;
+        $('bell-count').hidden = unread === 0;
+
+        bell.setAttribute(
+            'aria-label',
+            unread
+                ? `Notifications, ${unread} unread`
+                : 'Notifications'
+        );
+
+        // Hide the Clear All button when there are no notifications.
+        $('bell-clear').hidden = shown.length === 0;
+
+        // Generate the notification list using backend alert fields.
+        $('bell-list').innerHTML = shown.map(a => {
+
+                // Escape database text before inserting it into HTML.
+                const title = escapeHtml(a.title);
+                const message = escapeHtml(a.message);
+                const type = escapeHtml(a.alertType);
+
+                // Convert the backend timestamp into a readable date.
+                const posted = a.createdAt
+                    ? formatTime(new Date(a.createdAt).getTime())
+                    : 'Recently';
+
+                const unreadClass =
+                    a.alertId > bellState.seenUpTo ? ' unread' : '';
+
+                return `
+            <div class="alert-item${unreadClass}">
+                <span class="text">
+                    <strong>${title}</strong>
+                    <span class="hint">${type}</span>
+                    <span>${message}</span>
+                    <span class="when">Posted ${posted}</span>
+                </span>
+
+                <button class="remove"
+                        type="button"
+                        data-id="${a.alertId}"
+                        aria-label="Clear this notification">
+                    &#10005;
+                </button>
+            </div>
+        `;
+            }).join('') ||
+            '<div class="empty">You\'re all caught up.</div>';
+    }
+
+
+// Opens or closes the notification menu.
+// Closing the menu marks all currently displayed alerts as read.
 function setBell(open) {
+
     bellMenu.hidden = !open;
     bell.setAttribute('aria-expanded', open);
+
     if (open) return;
 
-    // closing the list marks everything in it as read
-    const newest = Math.max(0, ...alerts.map(a => a.id));
+    // Get the newest alert ID currently available.
+    const newest = Math.max(
+        0,
+        ...alerts.map(a => a.alertId)
+    );
+
+    // Remember which alerts have been viewed.
     if (newest > bellState.seenUpTo) {
         bellState.seenUpTo = newest;
         saveBell();
-        drawBell();
     }
+
+    // Refresh the notification count after closing.
+    drawBell();
 }
 
 bell.addEventListener('click', () => setBell(bellMenu.hidden));
@@ -436,32 +664,37 @@ document.addEventListener('click', e => {
     if (!bellMenu.hidden && !path.includes(bellMenu) && !path.includes(bell)) setBell(false);
 });
 
+
+// Clears a single notification for this browser.
+// This does NOT delete or deactivate the alert in Supabase.
 $('bell-list').addEventListener('click', e => {
+
     const button = e.target.closest('button[data-id]');
     if (!button) return;
 
-    bellState.cleared.push(Number(button.dataset.id));
-    saveBell();
-    drawBell();
-});
+    const alertId = Number(button.dataset.id);
 
-$('bell-clear').addEventListener('click', () => {
-    alerts.forEach(a => {
-        if (!bellState.cleared.includes(a.id)) bellState.cleared.push(a.id);
-    });
-    saveBell();
-    drawBell();
-});
-
-// an alert posted in another tab shows up here right away
-window.addEventListener('storage', e => {
-    if (e.key !== 'fst-alerts') return;
-    try {
-        alerts = JSON.parse(e.newValue) || [];
-    } catch (err) {
-        alerts = [];
+    // Avoid storing duplicate dismissed alert IDs.
+    if (!bellState.cleared.includes(alertId)) {
+        bellState.cleared.push(alertId);
     }
-    drawAlerts();
+
+    saveBell();
+    drawBell();
+});
+
+// Clears all currently displayed notifications.
+// Backend alerts remain active and available on the Alerts page.
+$('bell-clear').addEventListener('click', () => {
+
+    alerts.forEach(a => {
+        if (!bellState.cleared.includes(a.alertId)) {
+            bellState.cleared.push(a.alertId);
+        }
+    });
+
+    saveBell();
+    drawBell();
 });
 
 /*
@@ -535,28 +768,76 @@ $('admin-login').addEventListener('submit', async e => {
     }
 });
 
-$('alert-form').addEventListener('submit', e => {
+// Posts a new announcement using the authenticated admin session.
+// Alerts are saved in Supabase through the Spring Boot REST API.
+$('alert-form').addEventListener('submit', async e => {
     e.preventDefault();
-    const text = $('alert-text').value.trim();
-    if (!text) return;
 
-    alerts.push({ id: Date.now(), text });
-    saveAlerts();
-    drawAlerts();
-    $('alert-text').value = '';
-    $('admin-msg').textContent = 'Alert posted.';
+    const message = $('alert-text').value.trim();
+    const adminMsg = $('admin-msg');
+    const submitButton = e.currentTarget.querySelector('[type="submit"]');
+
+    // Prevent empty announcements.
+    if (!message) {
+        adminMsg.textContent = 'Please enter an alert message.';
+        return;
+    }
+
+    // Temporarily disable submission to prevent duplicate alerts.
+    if (submitButton) submitButton.disabled = true;
+    adminMsg.textContent = 'Posting alert...';
+
+    try {
+        // The current form has only a message field.
+        // Use a default title and alert type until we add more inputs.
+        await postAlert(
+            'Shuttle Service Alert',
+            message,
+            'INFO'
+        );
+
+        // Clear the form only after the backend accepts the alert.
+        $('alert-text').value = '';
+        adminMsg.textContent = 'Alert posted successfully!';
+
+    } catch (error) {
+        console.error('Alert posting failed:', error);
+        adminMsg.textContent = error.message;
+
+    } finally {
+        if (submitButton) submitButton.disabled = false;
+    }
 });
 
-$('admin-alerts').addEventListener('click', e => {
+// Handles administrator removal of active service alerts.
+// Deactivation preserves the database record for future reference.
+$('admin-alerts').addEventListener('click', async e => {
+
     const button = e.target.closest('button[data-id]');
     if (!button) return;
 
-    alerts = alerts.filter(a => String(a.id) !== button.dataset.id);
-    bellState.cleared = bellState.cleared.filter(id => alerts.some(a => a.id === id));   // forget alerts that are gone
-    saveAlerts();
-    saveBell();
-    drawAlerts();
-    $('admin-msg').textContent = 'Alert removed.';
+    const alertId = button.dataset.id;
+    const adminMsg = $('admin-msg');
+
+    // Disable the button while the request is being processed.
+    button.disabled = true;
+    adminMsg.textContent = 'Removing alert...';
+
+    try {
+        // Deactivate the alert in Supabase through Spring Boot.
+        await deactivateAlert(alertId);
+
+        // The backend GET request refreshes all alert displays.
+        adminMsg.textContent = 'Alert removed successfully!';
+
+    } catch (error) {
+        console.error('Alert deactivation failed:', error);
+
+        // Keep the alert visible if the request failed.
+        adminMsg.textContent = error.message;
+
+        button.disabled = false;
+    }
 });
 
 /*

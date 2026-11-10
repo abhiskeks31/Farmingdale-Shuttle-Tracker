@@ -17,7 +17,9 @@ public class CORSconfig {
         CorsConfiguration configuration = new CorsConfiguration();
         // Keep the origin explicit: browsers do not allow wildcard origins with credentials.
         configuration.setAllowedOrigins(List.of("http://localhost:63342"));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        // Allowed HTTP methods for requests from our frontend.
+        // PATCH is required for administrator alert deactivation.
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         // Allow the frontend to send JSESSIONID; its requests must also include credentials.
         configuration.setAllowCredentials(true);
