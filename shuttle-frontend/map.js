@@ -103,7 +103,25 @@ function showNotice(text) {
     noticeBox.style.display = text ? 'block' : 'none';
 }
 
-// ---- live shuttles ----
+//ive shuttles
+// slides a marker from where it is now to the new spot instead of jumping
+function glideMarker(marker, lat, lng, duration) {
+    // stop an older slide that is still running for this marker
+    if (marker._glide) cancelAnimationFrame(marker._glide);
+
+    const start = marker.getLatLng();
+    const startTime = performance.now();
+
+    function step(now) {
+        const t = Math.min((now - startTime) / duration, 1);
+        marker.setLatLng([
+            start.lat + (lat - start.lat) * t,
+            start.lng + (lng - start.lng) * t
+        ]);
+        if (t < 1) marker._glide = requestAnimationFrame(step);
+    }
+    marker._glide = requestAnimationFrame(step);
+}
 
 async function refreshShuttles() {
     try {
@@ -129,8 +147,10 @@ async function refreshShuttles() {
             const marker = shuttleMarkers[shuttle.shuttleId];
 
             if (marker) {
-                pointMarker(marker, marker.getLatLng(), lat, lng);
-                marker.setLatLng([lat, lng]);
+                // compare with where the shuttle is heading, not where it is mid-slide
+                pointMarker(marker, marker._target || marker.getLatLng(), lat, lng);
+                marker._target = L.latLng(lat, lng);
+                glideMarker(marker, lat, lng, REFRESH_MS);
                 marker.setPopupContent(shuttlePopup(shuttle, spot));
             } else {
                 shuttleMarkers[shuttle.shuttleId] = L.marker([lat, lng], {
@@ -144,6 +164,7 @@ async function refreshShuttles() {
         // take off the markers of shuttles that lost their position
         Object.keys(shuttleMarkers).forEach(id => {
             if (!onMap[id]) {
+                cancelAnimationFrame(shuttleMarkers[id]._glide);
                 shuttleLayer.removeLayer(shuttleMarkers[id]);
                 delete shuttleMarkers[id];
             }
