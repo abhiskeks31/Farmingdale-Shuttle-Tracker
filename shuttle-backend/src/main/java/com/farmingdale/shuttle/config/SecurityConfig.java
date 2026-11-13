@@ -82,7 +82,7 @@ public class SecurityConfig {
                                 "/api/shuttles", "/api/shuttles/*/available-seats", "/api/health", "/api/drivers",
                                 "/api/alerts", "/api/trips", "/api/trips/*", "/api/trips/route/*", "/api/trips/*/stops",
                                 "/api/gps-locations", "/api/gps-locations/shuttle/*/latest",
-                                "/api/occupancy", "/api/occupancy/shuttle/*/latest",
+                                "/api/occupancy", "/api/occupancy/shuttle/*/latest", "/api/eta/shuttle/*",
                                 "/api/simulation/routes/*/*", "/api/simulation/shuttle/*/status").permitAll()
                                 // Allow students to submit driver feedback without logging in.
                                 // CSRF protection still applies to this POST request.
