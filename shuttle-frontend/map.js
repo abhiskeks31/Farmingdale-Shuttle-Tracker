@@ -77,7 +77,61 @@ function pointMarker(marker, from, lat, lng) {
     arrow.style.opacity = '1';
 }
 
-function shuttlePopup(shuttle, spot) {
+// Converts database stop names into readable names for the map.
+function formatStopName(stopName) {
+    const names = {
+        farmingdale_lirr: 'Farmingdale LIRR',
+        nold_hall: 'Nold Hall',
+        aviation_center: 'Aviation Center'
+    };
+
+    return names[stopName] ||
+        stopName.replaceAll('_', ' ')
+            .replace(/\b\w/g, char => char.toUpperCase());
+}
+
+// Formats the ETA response returned by Spring Boot.
+// Handles running, stopped, and completed shuttle trips.
+function formatShuttleETA(eta) {
+
+    // No active simulation is available for this shuttle.
+    if (!eta) {
+        return 'ETA unavailable';
+    }
+
+    // Display an arrival estimate for a moving shuttle.
+    if (eta.status === 'EN_ROUTE') {
+
+        const seconds = Number(eta.etaSeconds);
+
+        if (!Number.isFinite(seconds) || seconds < 0) {
+            return 'ETA unavailable';
+        }
+
+        // Round up to avoid showing 0 minutes before arrival.
+        const minutes = Math.max(1, Math.ceil(seconds / 60));
+
+        // Format the database stop name before displaying it.
+        const stop = eta.nextStopName
+            ? escapeHtml(formatStopName(eta.nextStopName))
+            : 'Unknown stop';
+
+        return `Next stop: ${stop}<br>
+                Estimated arrival: ~${minutes} min`;
+    }
+
+    if (eta.status === 'ARRIVED') {
+        return 'Trip completed';
+    }
+
+    if (eta.status === 'NOT_RUNNING') {
+        return 'Trip not running';
+    }
+
+    return 'ETA unavailable';
+}
+
+function shuttlePopup(shuttle, spot, eta) {
     const capacity = Number(shuttle.capacity) || 0;
     const passengers = Number(shuttle.currentPassengers) || 0;
     const seats = Math.max(capacity - passengers, 0);
@@ -93,6 +147,7 @@ function shuttlePopup(shuttle, spot) {
         <div style="background:#e5e5e5;border-radius:4px;height:6px;margin:4px 0 6px;">
             <div style="background:#006F71;width:${percent}%;height:6px;border-radius:4px;"></div>
         </div>
+        ${formatShuttleETA(eta)}<br>
         Last update: ${time}`;
 }
 
@@ -134,10 +189,26 @@ async function refreshShuttles() {
             getJson(`/gps-locations/shuttle/${shuttle.shuttleId}/latest`).catch(() => null)
         ));
 
+        // Retrieve the latest ETA for each shuttle.
+        // A missing or unavailable ETA must not prevent GPS markers
+        // from appearing on the map.
+        const etas = await Promise.all(shuttles.map(shuttle =>
+            getJson(`/eta/shuttle/${shuttle.shuttleId}`)
+                .catch(error => {
+                    console.error(
+                        `Could not load ETA for shuttle ${shuttle.shuttleId}:`,
+                        error
+                    );
+                    return null;
+                })
+        ));
+
         const onMap = {};
         shuttles.forEach((shuttle, i) => {
             const spot = spots[i];
-            if (!spot) return;   // this shuttle has no position yet
+            const eta = etas[i];
+
+            if (!spot) return;
 
             const lat = Number(spot.latitude);
             const lng = Number(spot.longitude);
@@ -151,13 +222,13 @@ async function refreshShuttles() {
                 pointMarker(marker, marker._target || marker.getLatLng(), lat, lng);
                 marker._target = L.latLng(lat, lng);
                 glideMarker(marker, lat, lng, REFRESH_MS);
-                marker.setPopupContent(shuttlePopup(shuttle, spot));
+                marker.setPopupContent(shuttlePopup(shuttle, spot, eta));
             } else {
                 shuttleMarkers[shuttle.shuttleId] = L.marker([lat, lng], {
                     icon: shuttleIcon(shuttle),
                     zIndexOffset: 1000,
                     title: shuttle.vehicleNumber
-                }).addTo(shuttleLayer).bindPopup(shuttlePopup(shuttle, spot));
+                }).addTo(shuttleLayer).bindPopup(shuttlePopup(shuttle, spot, eta));
             }
         });
 
@@ -217,32 +288,43 @@ const routeWanted = {};   // routeId -> true while its switch is on
 
 // The stops of a route in order, as a list of stop lists.
 // one trip for each different final destination.
+// Retrieves the ordered stop sequences for a route.
+// Uses Trip and Schedule data instead of the removed RouteStop table.
 async function getRouteSequences(route) {
-    const routeStops = await getJson(`/route-stops/route/${route.routeId}`);
-    if (routeStops && routeStops.length > 1) {
-        const stops = (await getJson('/stops')) || [];
-        const sequence = [...routeStops]
-            .sort((a, b) => a.stopOrder - b.stopOrder)
-            .map(rs => stops.find(stop => stop.stopId === rs.stopId))
-            .filter(Boolean);
-        if (sequence.length > 1) return [sequence];
+
+    // Retrieve all scheduled trips associated with this route.
+    const trips = await getJson(
+        `/trips/route/${route.routeId}`
+    );
+
+    if (!Array.isArray(trips) || trips.length === 0) {
+        return [];
     }
 
-    const trips = await getJson(`/trips/route/${route.routeId}`);
-    if (!trips || trips.length === 0) return [];
+    // Select one representative trip per final destination.
+    const firstTrips = {};
 
-    const firstTrips = {};   // final destination -> the first trip that goes there
     trips.forEach(trip => {
-        const place = trip.finalDestination || '';
-        if (!firstTrips[place]) firstTrips[place] = trip;
+        const destination = trip.finalDestination || '';
+
+        if (!firstTrips[destination]) {
+            firstTrips[destination] = trip;
+        }
     });
 
+    // Retrieve scheduled stops in their correct travel order.
     const lists = await Promise.all(
-        Object.values(firstTrips).map(trip => getJson(`/trips/${trip.tripId}/stops`))
+        Object.values(firstTrips).map(trip =>
+            getJson(`/trips/${trip.tripId}/stops`)
+        )
     );
+
+    // Return the ordered sequences to the existing drawing function.
     return lists
-        .filter(list => list && list.length > 1)
-        .map(list => [...list].sort((a, b) => a.stopOrder - b.stopOrder));
+        .filter(list => Array.isArray(list) && list.length > 1)
+        .map(list =>
+            [...list].sort((a, b) => a.stopOrder - b.stopOrder)
+        );
 }
 
 // draws the line of one route
