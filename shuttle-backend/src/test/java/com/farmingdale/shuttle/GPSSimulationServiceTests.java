@@ -6,6 +6,7 @@ import com.farmingdale.shuttle.entity.Trip;
 import com.farmingdale.shuttle.repository.ShuttleRepository;
 import com.farmingdale.shuttle.service.GPSLocationService;
 import com.farmingdale.shuttle.service.TripService;
+import com.farmingdale.shuttle.service.TripFeedbackService;
 import com.farmingdale.shuttle.simulation.GPSSimulationService;
 import com.farmingdale.shuttle.simulation.SimulationRouteService;
 import com.farmingdale.shuttle.simulation.SimulationState;
@@ -32,6 +33,7 @@ class GPSSimulationServiceTest {
     private GPSLocationService gpsLocationService;
     private ShuttleRepository shuttleRepository;
     private GPSSimulationService simulationService;
+    private TripFeedbackService tripFeedbackService;
 
     private static final Long SHUTTLE_ID = 1L;
     private static final Long TRIP_ID = 4L;
@@ -42,6 +44,7 @@ class GPSSimulationServiceTest {
         tripService = mock(TripService.class);
         gpsLocationService = mock(GPSLocationService.class);
         shuttleRepository = mock(ShuttleRepository.class);
+        tripFeedbackService = mock(TripFeedbackService.class);
 
         SimulationRouteService routeService =
                 new SimulationRouteService(new ObjectMapper());
@@ -50,7 +53,8 @@ class GPSSimulationServiceTest {
                 tripService,
                 routeService,
                 gpsLocationService,
-                shuttleRepository
+                shuttleRepository,
+                tripFeedbackService
         );
 
         // Create mock data BEFORE using thenReturn().
@@ -323,5 +327,41 @@ class GPSSimulationServiceTest {
                         eq(SHUTTLE_ID),
                         any(GPSLocationUpdateRequest.class)
                 );
+    }
+
+    @Test
+    void naturallyCompletedTripGeneratesFeedbackSession() {
+
+        SimulationState state =
+                simulationService.startSimulation(
+                        SHUTTLE_ID, TRIP_ID
+                );
+
+        // Advance the simulation until the final waypoint.
+        for (int i = 0; i < 2000 && state.isRunning(); i++) {
+            simulationService.updateSimulations();
+        }
+
+        assertFalse(state.isRunning(),
+                "Simulation should reach its destination");
+
+        verify(tripFeedbackService, times(1))
+                .createFeedbackSession(SHUTTLE_ID, TRIP_ID);
+    }
+
+    @Test
+    void manuallyStoppedTripDoesNotGenerateFeedbackSession() {
+
+        simulationService.startSimulation(
+                SHUTTLE_ID, TRIP_ID
+        );
+
+        simulationService.stopSimulation(SHUTTLE_ID);
+
+        // Even future scheduled updates must not generate a code.
+        simulationService.updateSimulations();
+
+        verify(tripFeedbackService, never())
+                .createFeedbackSession(anyLong(), anyLong());
     }
 }

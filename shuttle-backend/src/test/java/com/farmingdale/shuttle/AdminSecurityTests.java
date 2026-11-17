@@ -8,6 +8,9 @@ import com.farmingdale.shuttle.repository.AdminRepository;
 import com.farmingdale.shuttle.service.*;
 import com.farmingdale.shuttle.simulation.GPSSimulationService;
 import com.farmingdale.shuttle.simulation.SimulationRouteService;
+import com.farmingdale.shuttle.entity.TripFeedbackSession;
+import com.farmingdale.shuttle.repository.TripFeedbackSessionRepository;
+import java.util.List;
 import com.jayway.jsonpath.JsonPath;
 import java.time.OffsetDateTime;
 import java.util.Optional;
@@ -49,10 +52,16 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppC
 @SpringJUnitConfig(AdminSecurityTests.TestConfig.class)
 @WebAppConfiguration
 class AdminSecurityTests {
-    @Autowired WebApplicationContext context;
-    @Autowired AdminRepository admins;
-    @Autowired PasswordEncoder encoder;
-    @Autowired GPSSimulationService simulations;
+    @Autowired
+    WebApplicationContext context;
+    @Autowired
+    AdminRepository admins;
+    @Autowired
+    PasswordEncoder encoder;
+    @Autowired
+    GPSSimulationService simulations;
+    @Autowired
+    TripFeedbackSessionRepository feedbackSessions;
     private MockMvc mvc;
     private Admin activeAdmin;
 
@@ -61,7 +70,7 @@ class AdminSecurityTests {
     @BeforeEach
     void setup() {
         mvc = webAppContextSetup(context).apply(springSecurity()).build();
-        reset(admins, simulations);
+        reset(admins, simulations, feedbackSessions);
         activeAdmin = mock(Admin.class);
         when(activeAdmin.getUsername()).thenReturn("admin");
         when(activeAdmin.getPasswordHash()).thenReturn(encoder.encode("correct-password"));
@@ -181,7 +190,7 @@ class AdminSecurityTests {
     // or disabled account, and do not update last_login for any failed attempt.
     @Test
     void incorrectUnknownAndInactiveAccountsHaveGenericFailures() throws Exception {
-        for (String username : new String[] {"admin", "unknown"}) {
+        for (String username : new String[]{"admin", "unknown"}) {
             mvc.perform(post("/api/auth/login").with(csrf())
                             .param("username", username).param("password", "wrong-password"))
                     .andExpect(status().isUnauthorized())
@@ -249,7 +258,115 @@ class AdminSecurityTests {
                 JsonPath.read(body, "$.headerName"), JsonPath.read(body, "$.token"));
     }
 
-    private record Token(MockHttpSession session, String header, String value) { }
+    // Unauthenticated users must not access feedback verification codes.
+    @Test
+    void feedbackSessionsRequireAuthentication() throws Exception {
+
+        mvc.perform(get("/api/admin/feedback-sessions/trip/1"))
+                .andExpect(status().isUnauthorized());
+
+        verify(feedbackSessions, never())
+                .findByTripIdOrderByCompletedAtDesc(anyLong());
+    }
+
+    // A logged-in user without the ADMIN role must be rejected.
+    @Test
+    void nonAdminCannotRetrieveFeedbackSessions() throws Exception {
+
+        mvc.perform(get("/api/admin/feedback-sessions/trip/1")
+                        .with(user("student").roles("USER")))
+                .andExpect(status().isForbidden());
+
+        verify(feedbackSessions, never())
+                .findByTripIdOrderByCompletedAtDesc(anyLong());
+    }
+
+    // Administrators can retrieve the correct verification session data.
+    @Test
+    void adminCanRetrieveFeedbackSessionByTrip() throws Exception {
+
+        OffsetDateTime completedAt = OffsetDateTime.now();
+        OffsetDateTime expiresAt = completedAt.plusHours(24);
+
+        TripFeedbackSession session = new TripFeedbackSession();
+
+        session.setSessionId(1L);
+        session.setTripId(1L);
+        session.setShuttleId(1L);
+        session.setDriverId(1);
+        session.setVerificationCode("TESTAB23");
+        session.setCompletedAt(completedAt);
+        session.setExpiresAt(expiresAt);
+
+        when(feedbackSessions.findByTripIdOrderByCompletedAtDesc(1L))
+                .thenReturn(List.of(session));
+
+        mvc.perform(get("/api/admin/feedback-sessions/trip/1")
+                        .with(user("admin").roles("ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].sessionId").value(1))
+                .andExpect(jsonPath("$[0].tripId").value(1))
+                .andExpect(jsonPath("$[0].shuttleId").value(1))
+                .andExpect(jsonPath("$[0].driverId").value(1))
+                .andExpect(jsonPath("$[0].verificationCode")
+                        .value("TESTAB23"))
+                .andExpect(jsonPath("$[0].expired").value(false))
+                .andExpect(header().string(
+                        "Cache-Control",
+                        org.hamcrest.Matchers.containsString("no-store")
+                ));
+
+        verify(feedbackSessions, times(1))
+                .findByTripIdOrderByCompletedAtDesc(1L);
+    }
+
+
+    // A trip without completed feedback sessions returns an empty list.
+    @Test
+    void adminGetsEmptyListWhenNoFeedbackSessionsExist() throws Exception {
+
+        when(feedbackSessions.findByTripIdOrderByCompletedAtDesc(99L))
+                .thenReturn(List.of());
+
+        mvc.perform(get("/api/admin/feedback-sessions/trip/99")
+                        .with(user("admin").roles("ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+
+        verify(feedbackSessions, times(1))
+                .findByTripIdOrderByCompletedAtDesc(99L);
+    }
+
+
+    @Test
+    void adminCanSeeWhenFeedbackCodeHasExpired() throws Exception {
+
+        OffsetDateTime completedAt =
+                OffsetDateTime.now().minusHours(25);
+
+        TripFeedbackSession session = new TripFeedbackSession();
+
+        session.setSessionId(2L);
+        session.setTripId(1L);
+        session.setShuttleId(1L);
+        session.setDriverId(1);
+        session.setVerificationCode("EXPIRED2");
+        session.setCompletedAt(completedAt);
+        session.setExpiresAt(completedAt.plusHours(24));
+
+        when(feedbackSessions.findByTripIdOrderByCompletedAtDesc(1L))
+                .thenReturn(List.of(session));
+
+        mvc.perform(get("/api/admin/feedback-sessions/trip/1")
+                        .with(user("admin").roles("ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].verificationCode")
+                        .value("EXPIRED2"))
+                .andExpect(jsonPath("$[0].expired").value(true));
+    }
+
+    private record Token(MockHttpSession session, String header, String value) {
+    }
 
     // Load only MVC, security, and the real controllers needed by these tests.
     // Avoid @SpringBootTest here: it would start database access and simulation
@@ -264,19 +381,71 @@ class AdminSecurityTests {
             RouteController.class, ScheduleController.class,
             StopController.class, ShuttleController.class, TripController.class,
             GPSLocationController.class, OccupancyController.class,
-            GPSSimulationController.class, SimulationRouteController.class})
+            GPSSimulationController.class, SimulationRouteController.class, AdminFeedbackController.class,})
     static class TestConfig {
-        @Bean AdminRepository admins() { return mock(AdminRepository.class); }
-        @Bean DriverService drivers() { return mock(DriverService.class); }
-        @Bean DriverFeedbackService feedback() { return mock(DriverFeedbackService.class); }
-        @Bean RouteService routes() { return mock(RouteService.class); }
-        @Bean ScheduleService schedules() { return mock(ScheduleService.class); }
-        @Bean StopService stops() { return mock(StopService.class); }
-        @Bean ShuttleService shuttles() { return mock(ShuttleService.class); }
-        @Bean TripService trips() { return mock(TripService.class); }
-        @Bean GPSLocationService gps() { return mock(GPSLocationService.class); }
-        @Bean OccupancyService occupancy() { return mock(OccupancyService.class); }
-        @Bean GPSSimulationService simulations() { return mock(GPSSimulationService.class); }
-        @Bean SimulationRouteService simulationRoutes() { return mock(SimulationRouteService.class); }
+        @Bean
+        AdminRepository admins() {
+            return mock(AdminRepository.class);
+        }
+
+        @Bean
+        DriverService drivers() {
+            return mock(DriverService.class);
+        }
+
+        @Bean
+        DriverFeedbackService feedback() {
+            return mock(DriverFeedbackService.class);
+        }
+
+        @Bean
+        RouteService routes() {
+            return mock(RouteService.class);
+        }
+
+        @Bean
+        ScheduleService schedules() {
+            return mock(ScheduleService.class);
+        }
+
+        @Bean
+        StopService stops() {
+            return mock(StopService.class);
+        }
+
+        @Bean
+        ShuttleService shuttles() {
+            return mock(ShuttleService.class);
+        }
+
+        @Bean
+        TripService trips() {
+            return mock(TripService.class);
+        }
+
+        @Bean
+        GPSLocationService gps() {
+            return mock(GPSLocationService.class);
+        }
+
+        @Bean
+        OccupancyService occupancy() {
+            return mock(OccupancyService.class);
+        }
+
+        @Bean
+        GPSSimulationService simulations() {
+            return mock(GPSSimulationService.class);
+        }
+
+        @Bean
+        SimulationRouteService simulationRoutes() {
+            return mock(SimulationRouteService.class);
+        }
+
+        @Bean
+        TripFeedbackSessionRepository feedbackSessions() {
+            return mock(TripFeedbackSessionRepository.class);
+        }
     }
 }

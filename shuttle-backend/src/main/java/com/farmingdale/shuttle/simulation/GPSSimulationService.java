@@ -4,6 +4,7 @@ import com.farmingdale.shuttle.dto.GPSLocationUpdateRequest;
 import com.farmingdale.shuttle.dto.TripStopResponse;
 import com.farmingdale.shuttle.repository.ShuttleRepository;
 import com.farmingdale.shuttle.service.GPSLocationService;
+import com.farmingdale.shuttle.service.TripFeedbackService;
 import com.farmingdale.shuttle.service.TripService;
 import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -36,17 +37,20 @@ public class GPSSimulationService {
     private final SimulationRouteService routeService;
     private final GPSLocationService gpsLocationService;
     private final ShuttleRepository shuttleRepository;
+    private final TripFeedbackService tripFeedbackService;
 
     public GPSSimulationService(
             TripService tripService,
             SimulationRouteService routeService,
             GPSLocationService gpsLocationService,
-            ShuttleRepository shuttleRepository) {
+            ShuttleRepository shuttleRepository,
+            TripFeedbackService tripFeedbackService) {
 
         this.tripService = tripService;
         this.routeService = routeService;
         this.gpsLocationService = gpsLocationService;
         this.shuttleRepository = shuttleRepository;
+        this.tripFeedbackService = tripFeedbackService;
     }
 
     // Starts a new GPS simulation for the specified shuttle and trip
@@ -271,12 +275,13 @@ public class GPSSimulationService {
         state.setCurrentWaypointIndex(index);
         state.setDistanceAlongSegmentMeters(segmentProgress);
 
-        // Mark the simulation complete at the final waypoint
+        // The shuttle has reached its final destination.
         if (index >= waypoints.size() - 1) {
 
             List<Double> last =
                     waypoints.get(waypoints.size() - 1);
 
+            // Save the final GPS location first.
             saveLocation(
                     state,
                     last.get(0),
@@ -285,7 +290,34 @@ public class GPSSimulationService {
                     0.0
             );
 
+            // Mark the simulation complete before generating feedback.
+            // This prevents repeated code generation on later updates.
             state.setRunning(false);
+
+            // Generate a verification code for the completed trip.
+            try {
+                var feedbackSession =
+                        tripFeedbackService.createFeedbackSession(
+                                state.getShuttleId(),
+                                state.getTripId()
+                        );
+
+                System.out.println(
+                        "Trip " + state.getTripId()
+                                + " completed. Feedback session ID: "
+                                + feedbackSession.getSessionId()
+                );
+
+            } catch (RuntimeException exception) {
+
+                // A feedback failure must not undo trip completion.
+                System.err.println(
+                        "Trip " + state.getTripId()
+                                + " completed, but feedback code generation failed: "
+                                + exception.getMessage()
+                );
+            }
+
             return;
         }
 

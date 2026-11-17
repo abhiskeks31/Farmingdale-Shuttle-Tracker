@@ -17,6 +17,9 @@ public class DriverFeedback {
     // Driver receiving the rating
     @Column(name = "driver_id", nullable = false)
     private Integer driverId;
+    // Completed trip session associated with this rating.
+    @Column(name = "session_id")
+    private Long sessionId;
 
     // Rating given to the driver (1-5 stars)
     @Column(name = "rating", nullable = false)
@@ -63,4 +66,8 @@ public class DriverFeedback {
     public void setSubmittedAt(LocalDateTime submittedAt) {
         this.submittedAt = submittedAt;
     }
+
+    public Long getSessionId() { return sessionId; }
+
+    public void setSessionId(Long sessionId) {this.sessionId = sessionId;}
 }
