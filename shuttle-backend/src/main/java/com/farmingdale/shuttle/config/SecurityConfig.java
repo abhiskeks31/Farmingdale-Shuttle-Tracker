@@ -62,6 +62,12 @@ public class SecurityConfig {
                 // Credentials are accepted through session login, not HTTP Basic headers.
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(authorize -> authorize
+                        // Only authenticated administrators can retrieve feedback codes.
+                        // Must appear before the public GET matchers and anyRequest().
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/admin/feedback-sessions/**"
+                        ).hasRole("ADMIN")
                         // Allow internal error dispatches to preserve the original error response.
                         // A normal external request to an error URL is not exempted by this rule.
                         .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
@@ -86,11 +92,11 @@ public class SecurityConfig {
                                 "/api/simulation/routes/*/*", "/api/simulation/shuttle/*/status").permitAll()
                                 // Allow students to submit driver feedback without logging in.
                                 // CSRF protection still applies to this POST request.
+                                // Students can submit feedback without logging in.
                                 .requestMatchers(
-                                        HttpMethod.POST,
-                                        "/api/driver-feedback"
-                                ).permitAll()
-
+                                    HttpMethod.POST,
+                                 "/api/feedback"
+                                 ).permitAll()
                                 // Only administrators can modify other API resources.
                                 // This includes occupancy updates and GPS simulation controls.
                                 .requestMatchers(HttpMethod.POST, "/api/**").hasRole("ADMIN")
