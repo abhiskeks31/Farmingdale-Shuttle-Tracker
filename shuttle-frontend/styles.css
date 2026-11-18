@@ -55,15 +55,26 @@ body {
 }
 
 #bus {
-    font-size: 50px;
+    width: 110px;
     position: absolute;
-    bottom: 0;
-    left: -80px;
-    animation: drive 5s linear infinite;
+    bottom: -2px;
+    left: -130px;
+    animation: drive 9s linear infinite, bounce .5s ease-in-out infinite alternate;
+}
+
+#bus svg {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+@keyframes bounce {
+    from { transform: translateY(0); }
+    to { transform: translateY(-2px); }
 }
 
 @keyframes drive {
-    from { left: -80px; }
+    from { left: -130px; }
     to { left: 100%; }
 }
 
