@@ -18,11 +18,15 @@
 
 body {
     margin: 0;
-    font-family: Arial, sans-serif;
+    font-family: 'Poppins', Arial, sans-serif;
     background-color: var(--teal);
     color: white;
     text-align: center;
     overflow: hidden;
+}
+
+button, select, input, textarea {
+    font-family: inherit;
 }
 
 #splash {

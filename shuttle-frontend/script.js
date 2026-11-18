@@ -245,7 +245,7 @@ async function showResults() {
         html += `
             <div class="result">
                 <span class="type">${destination}</span>
-                <span class="time">${formatClock(r.from.departureTime)} &rarr; ${formatClock(r.to.departureTime)}</span>
+                <span class="time"><strong>${formatClock(r.from.departureTime)}</strong> &rarr; ${formatClock(r.to.departureTime)}</span>
                 <button class="panel-link" type="button" data-trip="${i}">More Info &#9656;</button>
             </div>`;
     });
