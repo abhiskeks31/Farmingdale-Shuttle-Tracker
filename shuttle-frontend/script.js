@@ -289,56 +289,115 @@ resultsBox.addEventListener('click', e => {
 
 loadStops();
 
-
-// fills the driver list from GET /api/drivers
-async function loadDrivers() {
-    const select = $('feedback-driver');
-    try {
-        const drivers = (await getJson('/drivers')) || [];
-        select.innerHTML = '<option value="">Choose a driver</option>' + drivers.map(driver =>
-            `<option value="${driver.driverId}">${escapeHtml(driver.driverName)}</option>`
-        ).join('');
-    } catch (err) {
-        console.warn('Could not load the drivers.', err);
-        select.innerHTML = '<option value="">No drivers available</option>';
-        $('feedback-msg').textContent = 'Could not load the drivers. Is the backend running?';
-    }
-}
-
-// sends the rating with POST /api/driver-feedback
+// ---- Student Feedback ----
+// Students submit an 8-character verification code and a rating.
+// Spring Boot identifies the correct driver from the trip session.
 $('feedback-form').addEventListener('submit', async e => {
+
     e.preventDefault();
-    const driverId = Number($('feedback-driver').value);
-    const checked = document.querySelector('input[name="rating"]:checked');
-    if (!driverId || !checked) {
-        $('feedback-msg').textContent = 'Pick a driver and a rating.';
+
+    const message = $('feedback-msg');
+    const button = $('feedback-send');
+
+    const code = $('feedback-code')
+        .value.trim().toUpperCase();
+
+    const selectedRating = document.querySelector(
+        'input[name="rating"]:checked'
+    );
+
+    // Validate the input before sending it to Spring Boot.
+    if (!/^[A-HJ-NP-Z2-9]{8}$/.test(code) || !selectedRating) {
+        message.textContent =
+            'Enter a valid 8-character trip code and select a rating.';
         return;
     }
 
-    const button = $('feedback-send');
     button.disabled = true;
+    message.textContent = 'Submitting feedback...';
+
     try {
-        const response = await fetch(`${API}/driver-feedback`, {
+
+        // Retrieve a CSRF token from Spring Security.
+        const csrfResponse = await fetch(
+            `${API}/auth/csrf`,
+            { credentials: 'include' }
+        );
+
+        if (!csrfResponse.ok) {
+            throw new Error('Could not retrieve CSRF token');
+        }
+
+        const csrf = await csrfResponse.json();
+
+        // Submit the code and rating to our feedback endpoint.
+        const response = await fetch(`${API}/feedback`, {
+
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ driverId, rating: Number(checked.value) })
+
+            credentials: 'include',
+
+            headers: {
+                'Content-Type': 'application/json',
+                [csrf.headerName || 'X-CSRF-TOKEN']: csrf.token
+            },
+
+            body: JSON.stringify({
+                verificationCode: code,
+                rating: Number(selectedRating.value)
+            })
         });
-        if (!response.ok) throw new Error('Request failed: ' + response.status);
-        $('feedback-msg').textContent = 'Thanks. Your rating was sent.';
-        $('feedback-form').reset();
+
+        // Display the correct message for each response.
+        if (response.status === 400) {
+
+            message.textContent =
+                'Invalid verification code or rating. Please check your entry.';
+
+        } else if (response.status === 410) {
+
+            message.textContent =
+                'This verification code has expired.';
+
+        } else if (response.status === 403) {
+
+            message.textContent =
+                'Security verification failed. Refresh and try again.';
+
+        } else if (response.status === 429) {
+
+            message.textContent =
+                'Too many attempts. Please try again later.';
+
+        } else if (!response.ok) {
+
+            throw new Error(
+                'Feedback request failed: ' + response.status
+            );
+
+        } else {
+
+            // Successful submission.
+            $('feedback-form').reset();
+
+            message.textContent =
+                'Thank you! Your driver rating was submitted successfully.';
+        }
+
     } catch (err) {
-        console.warn('Could not send the rating.', err);
-        $('feedback-msg').textContent = 'Could not send your rating. Please try again.';
+
+        console.error('Feedback submission failed:', err);
+
+        message.textContent =
+            'Could not submit feedback. Please check the backend connection.';
+
     } finally {
+
         button.disabled = false;
     }
 });
 
-loadDrivers();
-
-
 // ---- Alerts and Admin Tools ----
-
 let alerts = [];
 
 // Retrieves active alerts from the Spring Boot backend.
@@ -882,6 +941,10 @@ $('admin-signout').addEventListener('click', async () => {
         $('admin-login').hidden = false;
         $('admin-tools').hidden = true;
 
+        // Remove verification codes from the interface after logout.
+        $('feedback-codes-list').replaceChildren();
+        $('feedback-codes-msg').textContent = '';
+
         $('login-msg').textContent = 'Signed out successfully.';
         adminMsg.textContent = '';
 
@@ -986,12 +1049,52 @@ async function loadAdminLists() {
             `<option value="${s.shuttleId}">Bus ${escapeHtml(s.vehicleNumber)}</option>`).join('');
         $('occ-shuttle').innerHTML = shuttleOptions;
         $('trip-shuttle').innerHTML = shuttleOptions;
+        $('feedback-shuttle').innerHTML = shuttleOptions;
 
         const trips = (await getJson('/trips')) || [];
         $('trip-trip').innerHTML = trips.map(t =>
             `<option value="${t.tripId}">Trip ${t.tripId} to ${escapeHtml(t.finalDestination || 'shuttle')} (${escapeHtml(t.serviceDays)})</option>`).join('');
     } catch (err) {
         $('occ-msg').textContent = 'Could not load buses and trips. Is the backend running?';
+    }
+}
+
+
+// ---- Driver Ratings: Load Driver List ----
+// Populates the dropdown using the existing public drivers API.
+async function loadRatingsDrivers() {
+
+    const select = $('ratings-driver');
+
+    try {
+        const drivers = (await getJson('/drivers')) || [];
+
+        select.replaceChildren();
+
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = 'Choose a driver';
+        select.appendChild(placeholder);
+
+        drivers.forEach(driver => {
+
+            const option = document.createElement('option');
+
+            option.value = driver.driverId;
+            option.textContent = driver.driverName;
+
+            select.appendChild(option);
+        });
+
+    } catch (error) {
+
+        console.error('Could not load drivers:', error);
+
+        select.innerHTML =
+            '<option value="">Unable to load drivers</option>';
+
+        $('ratings-msg').textContent =
+            'Could not load drivers. Check the backend connection.';
     }
 }
 
@@ -1039,6 +1142,264 @@ $('trip-stop').addEventListener('click', async () => {
 
 loadAdminLists();
 
+// ---- Admin Feedback Verification Codes ----
+// Only authenticated administrators can retrieve codes.
+
+async function loadFeedbackCodes() {
+
+    const shuttleId = $('feedback-shuttle').value;
+
+    const message = $('feedback-codes-msg');
+    const list = $('feedback-codes-list');
+    const button = $('feedback-codes-load');
+
+    // Clear previous results.
+    list.replaceChildren();
+
+    if (!shuttleId) {
+        message.textContent = 'Select a shuttle first.';
+        return;
+    }
+
+    message.textContent = 'Loading feedback codes...';
+    button.disabled = true;
+
+    try {
+
+        // Retrieve completed trip sessions for this shuttle.
+        const response = await fetch(
+            `${API}/admin/feedback-sessions/shuttle/${encodeURIComponent(shuttleId)}`,
+            {
+                credentials: 'include',
+                cache: 'no-store'
+            }
+        );
+
+        // Only administrators should have access.
+        if (response.status === 401 || response.status === 403) {
+            message.textContent =
+                'Please sign in as an administrator.';
+            return;
+        }
+
+        if (!response.ok) {
+            throw new Error('Request failed: ' + response.status);
+        }
+
+        const sessions = await response.json();
+
+        if (!Array.isArray(sessions) || sessions.length === 0) {
+
+            message.textContent =
+                'No completed feedback sessions for this shuttle yet.';
+
+            return;
+        }
+
+        message.textContent =
+            `${sessions.length} completed feedback session(s).`;
+
+        // Display each completed trip's verification information.
+        for (const session of sessions) {
+
+            const entry = document.createElement('div');
+            entry.className = 'feedback-code-item';
+
+            const title = document.createElement('strong');
+
+            title.textContent =
+                `Trip ${session.tripId} · Driver ${session.driverId}`;
+
+            const code = document.createElement('div');
+            code.className = 'feedback-code-value';
+
+            code.textContent = session.expired
+                ? 'Expired code'
+                : session.verificationCode;
+
+            const detail = document.createElement('div');
+            detail.className = 'hint';
+
+            const completed = new Date(session.completedAt);
+            const expires = new Date(session.expiresAt);
+
+            detail.textContent =
+                `Completed: ${completed.toLocaleString()} · ` +
+                `Expires: ${expires.toLocaleString()}` +
+                (session.expired ? ' · Expired' : '');
+
+            entry.append(title, code, detail);
+
+            list.appendChild(entry);
+        }
+
+    } catch (err) {
+
+        console.error('Could not load feedback codes:', err);
+
+        message.textContent =
+            'Could not load feedback codes. Check the backend connection.';
+
+    } finally {
+
+        button.disabled = false;
+    }
+}
+
+// Load codes when the administrator clicks the button.
+$('feedback-codes-load').addEventListener(
+    'click',
+    loadFeedbackCodes
+);
+
+// Clear previous codes when selecting a different shuttle.
+$('feedback-shuttle').addEventListener('change', () => {
+
+    $('feedback-codes-list').replaceChildren();
+
+    $('feedback-codes-msg').textContent = '';
+});
+
+// ---- Admin Driver Ratings Dashboard ----
+// Retrieves ratings for a selected driver.
+// Only authenticated administrators can access this endpoint.
+async function loadDriverRatings() {
+
+    const driverId = $('ratings-driver').value;
+
+    const message = $('ratings-msg');
+    const button = $('ratings-load');
+    const summary = $('ratings-summary');
+    const list = $('ratings-list');
+
+    // Clear previous results whenever a new request starts.
+    summary.hidden = true;
+    list.replaceChildren();
+
+    if (!driverId) {
+        message.textContent = 'Please select a driver.';
+        return;
+    }
+
+    button.disabled = true;
+    message.textContent = 'Loading driver ratings...';
+
+    try {
+
+        const response = await fetch(
+            `${API}/admin/drivers/${encodeURIComponent(driverId)}/ratings`,
+            {
+                credentials: 'include',
+                cache: 'no-store'
+            }
+        );
+
+        if (response.status === 401 || response.status === 403) {
+            message.textContent =
+                'Please sign in as an administrator.';
+            return;
+        }
+
+        if (!response.ok) {
+            throw new Error(
+                'Could not retrieve ratings: HTTP ' + response.status
+            );
+        }
+
+        const data = await response.json();
+
+        // Show the driver's average and total number of ratings.
+        $('ratings-average').textContent =
+            data.totalRatings > 0
+                ? `${Number(data.averageRating).toFixed(1)} / 5`
+                : 'No ratings';
+
+        $('ratings-total').textContent = data.totalRatings;
+
+        summary.hidden = false;
+
+        if (!Array.isArray(data.ratings) ||
+            data.ratings.length === 0) {
+
+            message.textContent =
+                'This driver has not received any ratings yet.';
+
+            list.innerHTML =
+                '<div class="empty">No feedback submitted yet.</div>';
+
+            return;
+        }
+
+        message.textContent =
+            `Showing ${data.totalRatings} rating(s).`;
+
+        // Display each individual feedback record.
+        data.ratings.forEach(feedback => {
+
+            const card = document.createElement('div');
+            card.className = 'driver-rating-item';
+
+            const stars = document.createElement('div');
+            stars.className = 'driver-rating-stars';
+
+            const rating = Number(feedback.rating);
+
+            stars.textContent =
+                '★'.repeat(Math.max(0, Math.min(5, rating))) +
+                '☆'.repeat(Math.max(0, 5 - Math.min(5, rating)));
+
+            const details = document.createElement('div');
+            details.className = 'hint';
+
+            const submitted = feedback.submittedAt
+                ? new Date(feedback.submittedAt).toLocaleString()
+                : 'Unknown date';
+
+            details.textContent =
+                `Rating: ${rating}/5 · Submitted: ${submitted}`;
+
+            const tripInfo = document.createElement('div');
+            tripInfo.className = 'hint';
+
+            tripInfo.textContent = feedback.sessionId != null
+                ? `Feedback session: ${feedback.sessionId}`
+                : 'Feedback session unavailable';
+
+            card.append(stars, details, tripInfo);
+
+            list.appendChild(card);
+        });
+
+    } catch (error) {
+
+        console.error('Driver ratings request failed:', error);
+
+        message.textContent =
+            'Unable to load driver ratings. Check the backend connection.';
+
+    } finally {
+
+        button.disabled = false;
+    }
+}
+
+// Load ratings when the administrator clicks the button.
+$('ratings-load').addEventListener(
+    'click',
+    loadDriverRatings
+);
+
+// Clear the previous driver's ratings when changing selection.
+$('ratings-driver').addEventListener('change', () => {
+
+    $('ratings-summary').hidden = true;
+    $('ratings-list').replaceChildren();
+    $('ratings-msg').textContent = '';
+});
+
+// Load the available drivers when the page starts.
+loadRatingsDrivers();
+
 drawAlerts();
 
 // Check for an existing admin session whenever the page loads.
@@ -1057,6 +1418,15 @@ adminNavButton.addEventListener('click', async () => {
 
     // Hide the controls until Spring Security verifies the session.
     $('admin-tools').hidden = true;
+
+    // Remove verification codes from the interface after logout.
+    $('feedback-codes-list').replaceChildren();
+    $('feedback-codes-msg').textContent = '';
+
+    // Clear administrator-only ratings from the interface.
+    $('ratings-summary').hidden = true;
+    $('ratings-list').replaceChildren();
+    $('ratings-msg').textContent = '';
 
     // Check the current session against the backend.
     await restoreAdminSession();

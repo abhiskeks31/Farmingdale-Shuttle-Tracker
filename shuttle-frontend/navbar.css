@@ -592,3 +592,73 @@ button {
         text-align: left;
     }
 }
+/* Completed trip verification codes in Admin Tools */
+
+.feedback-code-item {
+    background: white;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin: 8px 0;
+    font-size: 12px;
+    overflow-wrap: anywhere;
+}
+
+.feedback-code-value {
+    color: var(--teal);
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    margin: 6px 0;
+}
+
+    /* Display entered verification codes in uppercase. */
+#feedback-code {
+    text-transform: uppercase;
+}
+
+/* ---- Driver Ratings Dashboard ---- */
+.ratings-summary-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 12px 0;
+}
+
+.ratings-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px 8px;
+    background-color: white;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.ratings-stat strong {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--teal);
+}
+
+/* Individual driver ratings */
+
+.driver-rating-item {
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    background-color: white;
+    border-radius: 8px;
+}
+
+.driver-rating-stars {
+    color: #e5a000;
+    font-size: 20px;
+    letter-spacing: 2px;
+    margin-bottom: 5px;
+}
+
+.driver-rating-item .hint {
+    margin-top: 4px;
+    font-size: 11px;
+}
+
+
