@@ -178,7 +178,32 @@ function glideMarker(marker, lat, lng, duration) {
     marker._glide = requestAnimationFrame(step);
 }
 
+// a small button on the map that centers it on the running shuttles
+function addLocateButton() {
+    const Locate = L.Control.extend({
+        options: { position: 'topright' },
+        onAdd() {
+            const button = L.DomUtil.create('button', 'locate-btn');
+            button.type = 'button';
+            button.textContent = 'Find shuttles';
+            button.setAttribute('aria-label', 'Zoom the map to the shuttles');
+            L.DomEvent.disableClickPropagation(button);
+            button.addEventListener('click', () => {
+                const points = Object.values(shuttleMarkers).map(marker => marker.getLatLng());
+                if (points.length === 0) {
+                    showNotice('No shuttles are reporting a location right now.');
+                    return;
+                }
+                map.fitBounds(L.latLngBounds(points), { padding: [60, 60], maxZoom: 17 });
+            });
+            return button;
+        }
+    });
+    map.addControl(new Locate());
+}
+
 async function refreshShuttles() {
+    if (document.hidden) return;   // nobody is looking, save the requests
     try {
         loadStopMarkers();   // does nothing once the stops are on the map
         const shuttles = await getJson('/shuttles');
@@ -434,6 +459,13 @@ function startMap() {
     });
     map.addControl(new Notice());
 
+    addLocateButton();
+
     refreshShuttles();
     setInterval(refreshShuttles, REFRESH_MS);
+
+    // catch up right away when the tab becomes visible again
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) refreshShuttles();
+    });
 }

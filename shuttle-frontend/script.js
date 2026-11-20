@@ -969,6 +969,7 @@ async function adminPost(path, body) {
 function whyFailed(response, what) {
     if (response.status === 401 || response.status === 403) return 'Please sign in again.';
     if (response.status === 409) return 'That bus is already running.';
+    if (response.status === 404 && what === 'stop') return 'That bus is not running a trip right now.';
     if (response.status === 400) {
         return what === 'seats'
             ? 'Those numbers do not fit this bus. Check boarding, exiting and capacity.'
@@ -1030,7 +1031,7 @@ $('trip-stop').addEventListener('click', async () => {
     msg.textContent = 'Stopping...';
     try {
         const response = await adminPost(`/simulation/shuttle/${$('trip-shuttle').value}/stop`);
-        msg.textContent = response.ok ? 'Trip stopped.' : whyFailed(response);
+        msg.textContent = response.ok ? 'Trip stopped.' : whyFailed(response, 'stop');
     } catch (err) {
         msg.textContent = 'Could not reach the backend.';
     }
