@@ -97,6 +97,11 @@ public class SecurityConfig {
                                     HttpMethod.POST,
                                  "/api/feedback"
                                  ).permitAll()
+                                // Only administrators can view driver rating summaries.
+                                .requestMatchers(
+                                    HttpMethod.GET,
+                                    "/api/admin/drivers/*/ratings"
+                                ).hasRole("ADMIN")
                                 // Only administrators can modify other API resources.
                                 // This includes occupancy updates and GPS simulation controls.
                                 .requestMatchers(HttpMethod.POST, "/api/**").hasRole("ADMIN")

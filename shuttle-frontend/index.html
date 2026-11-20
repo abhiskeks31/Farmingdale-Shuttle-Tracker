@@ -73,20 +73,69 @@
     <!-- Feedback -->
     <div class="view" id="feedback">
         <h2>Feedback</h2>
+
         <form id="feedback-form">
-            <label for="feedback-driver" class="hint">Choose your driver</label>
-            <select id="feedback-driver" required></select>
+
+            <p class="hint">
+                Enter the verification code provided after your
+                completed shuttle trip. Your rating will
+                automatically be assigned to the correct driver.
+            </p>
+
+            <label for="feedback-code" class="hint">
+                Trip verification code
+            </label>
+
+            <input
+                    id="feedback-code"
+                    name="verificationCode"
+                    type="text"
+                    maxlength="8"
+                    minlength="8"
+                    pattern="[A-HJ-NP-Za-hj-np-z2-9]{8}"
+                    autocomplete="off"
+                    autocapitalize="characters"
+                    spellcheck="false"
+                    placeholder="8-character code"
+                    required
+            >
 
             <p class="hint" id="stars-label">Your rating</p>
-            <div id="stars" role="radiogroup" aria-labelledby="stars-label">
-                <input type="radio" name="rating" id="star5" value="5" required><label for="star5" title="5 stars">&#9733;</label>
-                <input type="radio" name="rating" id="star4" value="4"><label for="star4" title="4 stars">&#9733;</label>
-                <input type="radio" name="rating" id="star3" value="3"><label for="star3" title="3 stars">&#9733;</label>
-                <input type="radio" name="rating" id="star2" value="2"><label for="star2" title="2 stars">&#9733;</label>
-                <input type="radio" name="rating" id="star1" value="1"><label for="star1" title="1 star">&#9733;</label>
+
+            <div id="stars" role="radiogroup"
+                 aria-labelledby="stars-label">
+
+                <input type="radio" name="rating"
+                       id="star5" value="5" required>
+                <label for="star5" title="5 stars">&#9733;</label>
+
+                <input type="radio" name="rating"
+                       id="star4" value="4">
+                <label for="star4" title="4 stars">&#9733;</label>
+
+                <input type="radio" name="rating"
+                       id="star3" value="3">
+                <label for="star3" title="3 stars">&#9733;</label>
+
+                <input type="radio" name="rating"
+                       id="star2" value="2">
+                <label for="star2" title="2 stars">&#9733;</label>
+
+                <input type="radio" name="rating"
+                       id="star1" value="1">
+                <label for="star1" title="1 star">&#9733;</label>
+
             </div>
-            <button class="panel-btn" type="submit" id="feedback-send">Send rating</button>
-            <p class="note" id="feedback-msg" role="status"></p>
+
+            <button class="panel-btn"
+                    type="submit"
+                    id="feedback-send">
+                Send rating
+            </button>
+
+            <p class="note" id="feedback-msg"
+               role="status"></p>
+
         </form>
     </div>
 
@@ -140,6 +189,83 @@
                 <button class="panel-btn panel-btn-light" type="button" id="trip-stop">Stop trip</button>
                 <p class="note" id="trip-msg" role="status"></p>
             </form>
+
+            <!-- Completed trip feedback verification codes -->
+            <h3>Trip Feedback Verification Codes</h3>
+
+            <p class="hint">
+                Select a shuttle to view verification codes
+                generated after completed trips.
+                Codes expire after 24 hours.
+            </p>
+
+            <label for="feedback-shuttle" class="hint">
+                Shuttle
+            </label>
+
+            <select id="feedback-shuttle"
+                    aria-label="Shuttle for feedback codes">
+            </select>
+
+            <button
+                    class="panel-btn"
+                    type="button"
+                    id="feedback-codes-load">
+                View feedback codes
+            </button>
+
+            <p class="note"
+               id="feedback-codes-msg"
+               role="status">
+            </p>
+
+            <div id="feedback-codes-list"></div>
+
+
+            <!-- Driver Ratings Dashboard -->
+            <h3>Driver Ratings</h3>
+
+            <p class="hint">
+                View the average rating and feedback history
+                for each shuttle driver.
+            </p>
+
+            <label for="ratings-driver" class="hint">
+                Select driver
+            </label>
+
+            <select id="ratings-driver" aria-label="Select driver">
+                <option value="">Loading drivers...</option>
+            </select>
+
+            <button
+                    class="panel-btn"
+                    type="button"
+                    id="ratings-load">
+                View driver ratings
+            </button>
+
+            <p class="note" id="ratings-msg" role="status"></p>
+
+            <!-- Average rating and total submissions -->
+            <div id="ratings-summary" hidden>
+                <div class="ratings-summary-grid">
+
+                    <div class="ratings-stat">
+                        <span class="hint">Average rating</span>
+                        <strong id="ratings-average">—</strong>
+                    </div>
+
+                    <div class="ratings-stat">
+                        <span class="hint">Total ratings</span>
+                        <strong id="ratings-total">0</strong>
+                    </div>
+
+                </div>
+
+                <h3>Recent Feedback</h3>
+                <div id="ratings-list"></div>
+            </div>
 
             <button class="panel-btn panel-btn-light" id="admin-signout" type="button">Sign out</button>
             <p class="note" id="admin-msg" role="status"></p>
