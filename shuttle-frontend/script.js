@@ -106,6 +106,14 @@ menuItems.forEach(item => {
 });
 
 
+// the Back button closes the open panel but keeps the menu open
+document.getElementById('panel-back').addEventListener('click', () => {
+    panel.classList.remove('has-content');
+    menuItems.forEach(item => item.removeAttribute('aria-pressed'));
+    menu.querySelector('.nav-item').focus();
+});
+
+
 // ---- view routes one switch for each route ----
 
 async function loadRouteToggles() {

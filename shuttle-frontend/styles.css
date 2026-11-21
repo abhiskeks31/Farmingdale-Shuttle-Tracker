@@ -245,3 +245,23 @@ button, select, input, textarea {
         transform: scale(1.15);
     }
 }
+
+/* Back button at the top of every menu panel */
+.panel-back {
+    position: sticky;
+    top: -20px;
+    z-index: 1;
+    margin: -20px -20px 12px;
+    padding: 12px 20px;
+    width: calc(100% + 40px);
+    font: 500 13px 'Poppins', Arial, sans-serif;
+    text-align: left;
+    color: var(--teal);
+    background: var(--gray-light);
+    border: none;
+    border-bottom: 1px solid #d3d6d8;
+}
+
+.panel-back:hover {
+    text-decoration: underline;
+}
