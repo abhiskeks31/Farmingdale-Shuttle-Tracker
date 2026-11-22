@@ -51,9 +51,22 @@ function shuttleIcon(shuttle) {
 
 const stopIcon = L.divIcon({
     className: 'stop-marker',
-    html: '<div style="font-size:24px;line-height:24px;text-align:center;">&#128655;</div>',
-    iconSize: [24, 24],
-    iconAnchor: [12, 22],
+    html: `<svg viewBox="0 0 24 30" width="24" height="30" aria-hidden="true">
+            <!-- pole -->
+            <rect x="11" y="14" width="2" height="15" fill="#555"/>
+            <!-- sign -->
+            <rect x="2" y="1" width="20" height="15" rx="4" fill="#006F71" stroke="#fff" stroke-width="1.5"/>
+            <!-- small bus on the sign -->
+            <rect x="6" y="5" width="12" height="7" rx="1.5" fill="#fff"/>
+            <rect x="7.5" y="6.5" width="3" height="2.5" fill="#006F71"/>
+            <rect x="13.5" y="6.5" width="3" height="2.5" fill="#006F71"/>
+            <circle cx="8.5" cy="12.5" r="1" fill="#fff"/>
+            <circle cx="15.5" cy="12.5" r="1" fill="#fff"/>
+            <!-- foot of the pole -->
+            <ellipse cx="12" cy="29" rx="4" ry="1" fill="rgba(0,0,0,.25)"/>
+        </svg>`,
+    iconSize: [24, 30],
+    iconAnchor: [12, 29],
     popupAnchor: [0, -20],
     tooltipAnchor: [12, -12]
 });

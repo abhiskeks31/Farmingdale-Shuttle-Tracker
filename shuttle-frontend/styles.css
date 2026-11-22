@@ -31,6 +31,17 @@ button, select, input, textarea {
 
 #splash {
     padding-top: 150px;
+    transition: opacity .35s ease;
+}
+
+#splash.fade-out {
+    opacity: 0;
+}
+
+.splash-hint {
+    margin-top: 12px;
+    font-size: 14px;
+    opacity: .85;
 }
 
 #splash h1 {
@@ -49,6 +60,10 @@ button, select, input, textarea {
     color: #1a3a5c;
     border: none;
     cursor: pointer;
+}
+
+#splash button:hover {
+    background-color: #e6f2f2;
 }
 
 #road {
@@ -244,4 +259,28 @@ button, select, input, textarea {
     .shuttle-pin {
         transform: scale(1.15);
     }
+}
+
+/* Back button at the top of every menu panel */
+.panel-back {
+    position: sticky;
+    top: -20px;
+    z-index: 1;
+    margin: -20px -20px 12px;
+    padding: 12px 20px;
+    width: calc(100% + 40px);
+    font: 500 13px 'Poppins', Arial, sans-serif;
+    text-align: left;
+    color: var(--teal);
+    background: var(--gray-light);
+    border: none;
+    border-bottom: 1px solid #d3d6d8;
+}
+
+.panel-back:hover {
+    text-decoration: underline;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #splash { transition: none; }
 }
