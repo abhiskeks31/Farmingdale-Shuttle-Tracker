@@ -31,6 +31,17 @@ button, select, input, textarea {
 
 #splash {
     padding-top: 150px;
+    transition: opacity .35s ease;
+}
+
+#splash.fade-out {
+    opacity: 0;
+}
+
+.splash-hint {
+    margin-top: 12px;
+    font-size: 14px;
+    opacity: .85;
 }
 
 #splash h1 {
@@ -49,6 +60,10 @@ button, select, input, textarea {
     color: #1a3a5c;
     border: none;
     cursor: pointer;
+}
+
+#splash button:hover {
+    background-color: #e6f2f2;
 }
 
 #road {
@@ -264,4 +279,8 @@ button, select, input, textarea {
 
 .panel-back:hover {
     text-decoration: underline;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #splash { transition: none; }
 }

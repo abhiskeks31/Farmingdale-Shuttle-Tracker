@@ -1,7 +1,13 @@
-// Get Started hides the splash screen and shows the map
+// Get Started fades the splash screen out and then shows the map
 function goToApp() {
-    document.getElementById('splash').style.display = 'none';
-    startMap();
+    const splash = document.getElementById('splash');
+    if (splash.classList.contains('fade-out')) return;   // already on its way
+
+    splash.classList.add('fade-out');
+    setTimeout(() => {
+        splash.style.display = 'none';
+        startMap();
+    }, 350);
 }
 
 const $ = id => document.getElementById(id);
@@ -182,6 +188,7 @@ async function loadStops() {
         if (!stops) throw new Error('No stops');
         fillStops(fromSelect, 'From', stops);
         fillStops(toSelect, 'To', stops);
+        restoreStops();   // preselect the stops from the last visit
     } catch (err) {
         resultsBox.innerHTML = '<div class="empty">Could not load stops. Is the backend running?</div>';
     }
@@ -262,6 +269,31 @@ async function showResults() {
 
 fromSelect.addEventListener('change', showResults);
 toSelect.addEventListener('change', showResults);
+
+// remember the last From and To stops a student picked (saved only in this browser)
+function saveStops() {
+    try {
+        localStorage.setItem('fst-stops', JSON.stringify({ from: fromSelect.value, to: toSelect.value }));
+    } catch (err) {
+        // private window or blocked storage, the page works without it
+    }
+}
+
+// puts the saved stops back and shows the trips right away
+function restoreStops() {
+    try {
+        const saved = JSON.parse(localStorage.getItem('fst-stops'));
+        if (!saved) return;
+        fromSelect.value = saved.from || '';
+        toSelect.value = saved.to || '';
+        if (fromSelect.value && toSelect.value) showResults();
+    } catch (err) {
+        // nothing saved or it could not be read
+    }
+}
+
+fromSelect.addEventListener('change', saveStops);
+toSelect.addEventListener('change', saveStops);
 
 // More Info shows the stops of that trip instead of the results
 resultsBox.addEventListener('click', e => {
