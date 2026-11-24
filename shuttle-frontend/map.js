@@ -171,6 +171,12 @@ function showNotice(text) {
     noticeBox.style.display = text ? 'block' : 'none';
 }
 
+// shows or hides the red banner when the backend cannot be reached
+function setServerDown(down) {
+    const banner = document.getElementById('server-banner');
+    if (banner) banner.hidden = !down;
+}
+
 //ive shuttles
 // slides a marker from where it is now to the new spot instead of jumping
 function glideMarker(marker, lat, lng, duration) {
@@ -279,9 +285,11 @@ async function refreshShuttles() {
             }
         });
 
+        setServerDown(false);
         showNotice(Object.keys(onMap).length === 0 ? 'No shuttles are reporting a location right now.' : '');
     } catch (err) {
-        showNotice('Cannot reach the shuttle server. Is the backend running?');
+        setServerDown(true);   // the red banner says it, so the small notice is cleared
+        showNotice('');
     }
 }
 
