@@ -202,8 +202,6 @@ async function getTripStops(tripId) {
 }
 
 // Today's trips that go from one stop to another, earliest first.
-// TODO: when the backend adds GET /trips/search?fromStopId=&toStopId=,
-// need to replace this with one call to it.
 async function findTrips(fromId, toId) {
     const trips = (await getJson('/trips')) || [];
     const todays = trips.filter(trip => runsToday(trip.serviceDays));
@@ -301,7 +299,6 @@ resultsBox.addEventListener('click', e => {
     if (!button) return;
 
     const result = currentResults[button.dataset.trip];
-    // TODO: when live tracking is connected, show On Time / Delayed instead of "Scheduled"
     const rows = [...result.stops]
         .sort((a, b) => a.stopOrder - b.stopOrder)
         .map(stop => `
